@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Audit log</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+</style>
+</helmet>
+<div style="width: 100%; height: 100%; min-height: 680px; box-sizing: border-box; display: flex; background: #ffffff; color: #1f2933">
+<aside style="width: 200px; flex-shrink: 0; border-right: 1px solid #9aa5b1; padding: 20px 12px; display: flex; flex-direction: column; gap: 6px; background: #f5f7fa">
+<span style="font-size: 16px; font-weight: 700; padding: 0 8px 12px 8px">Buku Pink Demo</span>
+<button style="text-align: left; padding: 10px 12px; border: 0; border-radius: 8px; background: transparent; color: #1f2933; font-size: 14px">Queue</button>
+<button style="text-align: left; padding: 10px 12px; border: 0; border-radius: 8px; background: transparent; color: #1f2933; font-size: 14px">Patients</button>
+<button style="text-align: left; padding: 10px 12px; border: 0; border-radius: 8px; background: transparent; color: #1f2933; font-size: 14px">Activation codes</button>
+<button style="text-align: left; padding: 10px 12px; border: 0; border-radius: 8px; background: #e6f4f2; color: #0f766e; font-size: 14px; font-weight: 600">Audit log</button>
+</aside>
+<main style="flex-grow: 1; padding: 24px; display: flex; flex-direction: column; gap: 16px; min-width: 0">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 12px"><div style="display: flex; flex-direction: column; gap: 2px"><h1 style="margin: 0; font-size: 22px">Audit log</h1><span style="font-size: 13px; color: #52606d">Prototype, fictional data. Entries are append-only and cannot be edited or deleted.</span></div><button style="padding: 10px 14px; border: 1px solid #9aa5b1; border-radius: 8px; background: #ffffff; font-size: 14px">Export CSV</button></div>
+<div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end">
+<label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px">From<input type="date" style="padding: 8px; border: 1px solid #9aa5b1; border-radius: 8px; font-size: 14px"></label>
+<label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px">To<input type="date" style="padding: 8px; border: 1px solid #9aa5b1; border-radius: 8px; font-size: 14px"></label>
+<label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px">Staff<select style="padding: 8px; border: 1px solid #9aa5b1; border-radius: 8px; font-size: 14px"><option>All</option><option>Nurse Aminah (demo)</option><option>Nurse Lim (demo)</option></select></label>
+<label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px">Action<select style="padding: 8px; border: 1px solid #9aa5b1; border-radius: 8px; font-size: 14px"><option>All</option><option>Check-in</option><option>Assign</option><option>Urgent flag</option><option>Code issued</option><option>Status change</option></select></label>
+<button style="padding: 9px 14px; border: 0; border-radius: 8px; background: #0f766e; color: #ffffff; font-size: 14px">Apply</button>
+</div>
+<table style="width: 100%; border-collapse: collapse; font-size: 14px">
+<thead><tr style="text-align: left; background: #f5f7fa"><th style="padding: 10px; border-bottom: 1px solid #9aa5b1">Time</th><th style="padding: 10px; border-bottom: 1px solid #9aa5b1">Staff</th><th style="padding: 10px; border-bottom: 1px solid #9aa5b1">Action</th><th style="padding: 10px; border-bottom: 1px solid #9aa5b1">Subject</th><th style="padding: 10px; border-bottom: 1px solid #9aa5b1">Detail</th></tr></thead>
+<tbody>
+<tr><td style="padding: 10px; border-bottom: 1px solid #d9dee3">09:12</td><td style="padding: 10px; border-bottom: 1px solid #d9dee3">Nurse Aminah (demo)</td><td style="padding: 10px; border-bottom: 1px solid #d9dee3">Assign</td><td style="padding: 10px; border-bottom: 1px solid #d9dee3">A014</td><td style="padding: 10px; border-bottom: 1px solid #d9dee3">Room 2, called</td></tr>
+<tr><td style="padding: 10px; border-bottom: 1px solid #d9dee3">09:10</td><td style="padding: 10px; border-bottom: 1px solid #d9dee3">Nurse Aminah (demo)</td><td style="padding: 10px; border-bottom: 1px solid #d9dee3">Code issued</td><td style="padding: 10px; border-bottom: 1px solid #d9dee3">Mei Ling (demo)</td><td style="padding: 10px; border-bottom: 1px solid #d9dee3">Expires in 7 days</td></tr>
+<tr><td style="padding: 10px; border-bottom: 1px solid #d9dee3">09:05</td><td style="padding: 10px; border-bottom: 1px solid #d9dee3">Nurse Lim (demo)</td><td style="padding: 10px; border-bottom: 1px solid #d9dee3">Urgent flag</td><td style="padding: 10px; border-bottom: 1px solid #d9dee3">W003</td><td style="padding: 10px; border-bottom: 1px solid #d9dee3">Reason recorded by staff</td></tr>
+<tr><td style="padding: 10px; border-bottom: 1px solid #d9dee3">09:01</td><td style="padding: 10px; border-bottom: 1px solid #d9dee3">System</td><td style="padding: 10px; border-bottom: 1px solid #d9dee3">Check-in</td><td style="padding: 10px; border-bottom: 1px solid #d9dee3">A015</td><td style="padding: 10px; border-bottom: 1px solid #d9dee3">QR scan accepted</td></tr>
+<tr><td style="padding: 10px; border-bottom: 1px solid #d9dee3">08:58</td><td style="padding: 10px; border-bottom: 1px solid #d9dee3">System</td><td style="padding: 10px; border-bottom: 1px solid #d9dee3">Check-in</td><td style="padding: 10px; border-bottom: 1px solid #d9dee3">A014</td><td style="padding: 10px; border-bottom: 1px solid #d9dee3">QR scan accepted</td></tr>
+</tbody>
+</table>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":680}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

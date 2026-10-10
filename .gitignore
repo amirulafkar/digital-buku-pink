@@ -1,0 +1,12 @@
+.env
+*.env
+!.env.example
+bin/
+obj/
+node_modules/
+.vs/
+*.user
+dist/
+.angular/
+TestResults/
+awesome-design-md/

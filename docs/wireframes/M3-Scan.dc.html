@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Scan QR</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #ffffff; color: #1f2933; display: flex; flex-direction: column">
+<div style="flex-grow: 1; padding: 32px 24px 16px 24px; display: flex; flex-direction: column; gap: 18px; overflow: hidden">
+<div style="display: flex; justify-content: space-between; align-items: center">
+<button style="border: 1px solid #9aa5b1; background: #ffffff; padding: 8px 12px; font-size: 14px; border-radius: 6px">Back</button>
+<span style="font-size: 13px; color: #52606d">Prototype, fictional data</span>
+</div>
+<h1 style="margin: 0; font-size: 24px">Scan the clinic QR code</h1>
+<p style="margin: 0; font-size: 15px; color: #52606d">Point the camera at the code on the counter screen. The code changes every minute, so a photo of it will not work.</p>
+<div style="flex-grow: 1; max-height: 340px; border: 2px dashed #0f766e; border-radius: 16px; background: #f5f7fa; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #52606d">Camera view</div>
+<div style="border: 1px solid #9aa5b1; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 14px; font-weight: 600">Result messages</span>
+<span style="font-size: 13px; color: #52606d">Success: "Checked in. Your number is A014."</span>
+<span style="font-size: 13px; color: #52606d">Expired code: "This code has expired. Scan the current one."</span>
+<span style="font-size: 13px; color: #52606d">No appointment today: "No appointment found. Please ask staff."</span>
+</div>
+<button style="padding: 14px; border: 1px solid #0f766e; border-radius: 8px; background: #ffffff; color: #0f766e; font-size: 15px">Can't scan? Ask staff at the counter</button>
+</div>
+<nav style="display: flex; border-top: 1px solid #9aa5b1">
+<button style="flex-grow: 1; padding: 16px 0; border: 0; background: #ffffff; color: #1f2933; font-size: 14px">Home</button>
+<button style="flex-grow: 1; padding: 16px 0; border: 0; background: #e6f4f2; color: #0f766e; font-size: 14px; font-weight: 600">Scan</button>
+<button style="flex-grow: 1; padding: 16px 0; border: 0; background: #ffffff; color: #1f2933; font-size: 14px">Status</button>
+<button style="flex-grow: 1; padding: 16px 0; border: 0; background: #ffffff; color: #1f2933; font-size: 14px">Inbox</button>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

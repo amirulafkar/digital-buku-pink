@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Activate and log in</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; padding: 32px 24px; background: #ffffff; color: #1f2933; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; justify-content: space-between; align-items: center">
+<span style="font-size: 13px; color: #52606d">Prototype, fictional data</span>
+<span style="display: flex; gap: 4px"><button style="border: 1px solid #9aa5b1; background: #ffffff; padding: 6px 10px; font-size: 13px; border-radius: 6px">BM</button><button style="border: 1px solid #0f766e; background: #e6f4f2; padding: 6px 10px; font-size: 13px; border-radius: 6px">EN</button></span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px; margin-top: 24px">
+<h1 style="margin: 0; font-size: 28px">Buku Pink Demo</h1>
+<p style="margin: 0; font-size: 15px; color: #52606d">Activate the account your clinic set up for you, or log in.</p>
+</div>
+<div style="display: flex; border: 1px solid #9aa5b1; border-radius: 8px; overflow: hidden">
+<button style="flex-grow: 1; padding: 12px; border: 0; background: #0f766e; color: #ffffff; font-size: 15px">Activate</button>
+<button style="flex-grow: 1; padding: 12px; border: 0; background: #ffffff; color: #1f2933; font-size: 15px">Log in</button>
+</div>
+<div style="display: flex; flex-direction: column; gap: 14px">
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px">Activation code from staff<input value="" placeholder="e.g. ABCD-1234" style="padding: 14px; border: 1px solid #9aa5b1; border-radius: 8px; font-size: 16px"></label>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px">New password<input type="password" value="" style="padding: 14px; border: 1px solid #9aa5b1; border-radius: 8px; font-size: 16px"></label>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px">Confirm password<input type="password" value="" style="padding: 14px; border: 1px solid #9aa5b1; border-radius: 8px; font-size: 16px"></label>
+</div>
+<button style="padding: 16px; border: 0; border-radius: 8px; background: #0f766e; color: #ffffff; font-size: 16px">Activate account</button>
+<p style="margin: 0; font-size: 13px; color: #52606d">No code? Ask the nurse at the clinic counter. Accounts are never created by the app on its own. Forgot your password? See staff to get a reset code.</p>
+<p style="margin: auto 0 0 0; font-size: 12px; color: #7b8794">Not an official Ministry of Health app. Fictional data only.</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

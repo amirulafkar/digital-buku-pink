@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Staff login</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+</style>
+</helmet>
+<div style="width: 100%; height: 100%; min-height: 680px; box-sizing: border-box; background: #f5f7fa; color: #1f2933; display: flex; align-items: center; justify-content: center">
+<div style="width: 380px; background: #ffffff; border: 1px solid #9aa5b1; border-radius: 12px; padding: 32px; display: flex; flex-direction: column; gap: 18px">
+<span style="font-size: 13px; color: #52606d">Prototype, fictional data</span>
+<h1 style="margin: 0; font-size: 24px">Buku Pink Demo, staff</h1>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px">Email<input type="email" value="" placeholder="nurse@demo.example" style="padding: 12px; border: 1px solid #9aa5b1; border-radius: 8px; font-size: 15px"></label>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px">Password<input type="password" value="" style="padding: 12px; border: 1px solid #9aa5b1; border-radius: 8px; font-size: 15px"></label>
+<button style="padding: 14px; border: 0; border-radius: 8px; background: #0f766e; color: #ffffff; font-size: 15px">Log in</button>
+<p style="margin: 0; font-size: 13px; color: #52606d">Accounts are created by the clinic admin. Sessions end after a period of inactivity.</p>
+<p style="margin: 0; font-size: 12px; color: #7b8794">Not an official Ministry of Health system. Fictional data only.</p>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":680}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
