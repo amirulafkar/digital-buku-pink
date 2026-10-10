@@ -100,6 +100,43 @@ public class Appointment
     public DateTimeOffset CreatedAt { get; set; }
 }
 
+public class QrToken
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ClinicId { get; set; }
+    public string TokenHash { get; set; } = ""; // SHA-256 of an opaque random value; no personal data
+    public DateTimeOffset ExpiresAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+public class QueueEntry
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ClinicId { get; set; }
+    public Guid? PatientId { get; set; }
+    public string? WalkInName { get; set; }
+    public Guid? AppointmentId { get; set; }
+    public DateOnly QueueDate { get; set; } // clinic timezone
+    public string QueueNo { get; set; } = ""; // A### appointment, W### walk-in
+    public string Source { get; set; } = "qr"; // qr | staff
+    public string Status { get; set; } = QueueStatus.Waiting;
+    public bool Urgent { get; set; } // no S2 writer; never set by the system
+    public string? UrgentReason { get; set; }
+    public Guid? RoomId { get; set; }
+    public Guid? StaffId { get; set; }
+    public string IdempotencyKey { get; set; } = "";
+    public DateTimeOffset CheckedInAt { get; set; }
+    public DateTimeOffset? CalledAt { get; set; }
+    public DateTimeOffset? StartedAt { get; set; }
+    public DateTimeOffset? CompletedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+public static class QueueStatus
+{
+    public const string Waiting = "waiting", Called = "called", InRoom = "in_room", Completed = "completed", Missed = "missed";
+}
+
 public static class Roles
 {
     public const string Patient = "patient", Nurse = "nurse", ClinicAdmin = "clinic_admin";

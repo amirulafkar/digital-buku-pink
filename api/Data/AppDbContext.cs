@@ -14,6 +14,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Room> Rooms => Set<Room>();
     public DbSet<Appointment> Appointments => Set<Appointment>();
+    public DbSet<QrToken> QrTokens => Set<QrToken>();
+    public DbSet<QueueEntry> QueueEntries => Set<QueueEntry>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -94,6 +96,34 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => new { x.PatientId, x.ScheduledAt });
         });
 
+        b.Entity<QrToken>(e =>
+        {
+            e.ToTable("qr_token");
+            e.HasOne<Clinic>().WithMany().HasForeignKey(x => x.ClinicId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.TokenHash).IsUnique();
+            e.HasIndex(x => x.ExpiresAt);
+        });
+        b.Entity<QueueEntry>(e =>
+        {
+            e.ToTable("queue_entry", t =>
+            {
+                t.HasCheckConstraint("ck_queue_entry_who", "patient_id is not null or walk_in_name is not null");
+                t.HasCheckConstraint("ck_queue_entry_status", "status in ('waiting','called','in_room','completed','missed')");
+                t.HasCheckConstraint("ck_queue_entry_source", "source in ('qr','staff')");
+                t.HasCheckConstraint("ck_queue_entry_urgent_reason", "urgent = false or urgent_reason is not null");
+            });
+            e.HasOne<Clinic>().WithMany().HasForeignKey(x => x.ClinicId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Patient>().WithMany().HasForeignKey(x => x.PatientId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Appointment>().WithMany().HasForeignKey(x => x.AppointmentId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Room>().WithMany().HasForeignKey(x => x.RoomId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Staff>().WithMany().HasForeignKey(x => x.StaffId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.ClinicId, x.QueueDate, x.QueueNo }).IsUnique();
+            e.HasIndex(x => new { x.IdempotencyKey, x.PatientId, x.QueueDate }).IsUnique();
+            e.HasIndex(x => new { x.ClinicId, x.QueueDate, x.IdempotencyKey }).IsUnique().HasFilter("patient_id IS NULL");
+            e.HasIndex(x => new { x.PatientId, x.QueueDate }).IsUnique().HasFilter("status NOT IN ('completed','missed')");
+            e.HasIndex(x => new { x.ClinicId, x.QueueDate, x.Status });
+        });
+
         // snake_case columns; created_at / at default now(); uuid ids default gen_random_uuid().
         foreach (var et in b.Model.GetEntityTypes())
         {
@@ -103,6 +133,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 if (p.Name == "CreatedAt" && p.GetDefaultValueSql() is null) p.SetDefaultValueSql("now()");
                 if (p.Name == "Id" && p.ClrType == typeof(Guid)) p.SetDefaultValueSql("gen_random_uuid()");
                 if (et.ClrType == typeof(AuditLog) && p.Name == "At") p.SetDefaultValueSql("now()");
+                if (et.ClrType == typeof(QueueEntry) && p.Name == "Urgent") p.SetDefaultValue(false);
                 if (et.ClrType == typeof(UserAccount) && p.Name == "FailedLogins") p.SetDefaultValue(0);
                 if (et.ClrType == typeof(UserAccount) && p.Name == "Status") p.SetDefaultValue("pending");
                 if (et.ClrType == typeof(Clinic) && p.Name == "Timezone") p.SetDefaultValue("Asia/Kuala_Lumpur");

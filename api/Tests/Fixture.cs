@@ -64,6 +64,8 @@ public class DbFixture : IAsyncLifetime
         Environment.SetEnvironmentVariable("ConnectionStrings__Default", AppConn);
         Environment.SetEnvironmentVariable("Auth__CodePepper", Pepper);
         Environment.SetEnvironmentVariable("Auth__RateLimitPerMinute", "100000");
+        Environment.SetEnvironmentVariable("Auth__CheckinPerMinute", "100000");
+        Environment.SetEnvironmentVariable("Auth__QrPerMinute", "100000");
         Environment.SetEnvironmentVariable("Auth__Key", "test-signing-key-" + Guid.NewGuid().ToString("N"));
         Factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
             b.ConfigureTestServices(s => s.AddTransient<IStartupFilter, FakeIpFilter>()));
@@ -104,6 +106,37 @@ public class DbFixture : IAsyncLifetime
         });
         await db.SaveChangesAsync();
         return new TestPatient(p.Id, acc.Id, p.Phone, code);
+    }
+
+    public async Task AddAppointmentTodayAsync(Guid clinicId, Guid patientId)
+    {
+        await using var db = Owner();
+        db.Appointments.Add(new Appointment { ClinicId = clinicId, PatientId = patientId, VisitType = "routine", ScheduledAt = DateTimeOffset.UtcNow });
+        await db.SaveChangesAsync();
+    }
+
+    public async Task<Guid> CreateRoomAsync(Guid clinicId)
+    {
+        await using var db = Owner();
+        var r = new Room { ClinicId = clinicId, Name = "Bilik T" };
+        db.Rooms.Add(r);
+        await db.SaveChangesAsync();
+        return r.Id;
+    }
+
+    /// <summary>Gives the seeded KK-DEMO-2 patient Nadia an active account (test only) and returns her phone.</summary>
+    public async Task<string> ActivateNadiaAsync(string password)
+    {
+        await using var db = Owner();
+        var n = await db.Patients.SingleAsync(p => p.Phone == "0100000005");
+        if (!await db.UserAccounts.AnyAsync(a => a.PatientId == n.Id))
+        {
+            var acc = new UserAccount { PatientId = n.Id, Status = AccountStatus.Active };
+            acc.PasswordHash = Hasher.HashPassword(acc, password);
+            db.UserAccounts.Add(acc);
+            await db.SaveChangesAsync();
+        }
+        return n.Phone;
     }
 
     public async Task<string> CreateStaffAsync(Guid clinicId, string role, string password)

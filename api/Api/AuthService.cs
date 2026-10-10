@@ -21,6 +21,8 @@ public class AuthOptions
     public int LockMinutes { get; set; } = 15;
     public string CodePepper { get; set; } = "";
     public int RateLimitPerMinute { get; set; } = 10;
+    public int CheckinPerMinute { get; set; } = 30; // per user
+    public int QrPerMinute { get; set; } = 12;      // per user
 }
 
 public record TokenResponse(string AccessToken, string RefreshToken, int ExpiresIn, string Role);

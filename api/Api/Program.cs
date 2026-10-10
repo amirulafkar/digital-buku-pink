@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using System.Net;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -21,6 +22,8 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<PatientRepository>();
 builder.Services.AddScoped<AppointmentRepository>();
 builder.Services.AddScoped<RoomRepository>();
+builder.Services.AddScoped<QueueRepository>();
+builder.Services.AddScoped<QueueService>();
 builder.Services.AddOpenApi();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
@@ -48,9 +51,21 @@ builder.Services.AddRateLimiter(o =>
         return RateLimitPartition.GetFixedWindowLimiter(ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions { PermitLimit = limit, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 });
     });
+    // Separate per-user buckets so a clinic's shared Wi-Fi (one IP) is not throttled together.
+    foreach (var (name, pick) in new (string, Func<AuthOptions, int>)[] { ("checkin", a => a.CheckinPerMinute), ("qr", a => a.QrPerMinute) })
+        o.AddPolicy(name, ctx =>
+        {
+            var limit = pick(ctx.RequestServices.GetRequiredService<IOptions<AuthOptions>>().Value);
+            var key = ctx.User.FindFirstValue("sub") ?? ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            return RateLimitPartition.GetFixedWindowLimiter(name + ":" + key,
+                _ => new FixedWindowRateLimiterOptions { PermitLimit = limit, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 });
+        });
 });
 builder.Services.AddAuthorizationBuilder()
-    .AddPolicy("Staff", p => p.RequireRole(Roles.Nurse, Roles.ClinicAdmin));
+    .AddPolicy("Staff", p => p.RequireRole(Roles.Nurse, Roles.ClinicAdmin))
+    .AddPolicy("Nurse", p => p.RequireRole(Roles.Nurse))
+    .AddPolicy("ClinicAdmin", p => p.RequireRole(Roles.ClinicAdmin))
+    .AddPolicy("Patient", p => p.RequireRole(Roles.Patient));
 
 var app = builder.Build();
 
@@ -79,9 +94,9 @@ if (args.Contains("seed"))
 }
 
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
-app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter(); // after auth so per-user policies can read the token
 app.MapGet("/health", () => Results.Ok());
 
 var auth = app.MapGroup("/api/v1/auth").RequireRateLimiting("auth"); // CORS/HSTS: confirm at the reverse proxy later
@@ -114,6 +129,27 @@ staff.MapGet("/patients/{id:guid}", async (Guid id, ClaimsPrincipal u, PatientRe
     await repo.GetAsync(ClinicOf(u), id) is { } p ? Results.Ok(PatientDto.From(p)) : Results.NotFound());
 staff.MapGet("/rooms", async (ClaimsPrincipal u, RoomRepository repo) =>
     Results.Ok((await repo.ListAsync(ClinicOf(u))).Select(r => new { r.Id, r.Name })));
+
+// S2: QR, check-in, queue. Clinic and user come from the token only.
+static IResult Send<T>(Outcome<T> o) =>
+    o.Ok ? Results.Json(o.Value, statusCode: o.Status) : Results.Json(new { code = o.Code, message = o.Message }, statusCode: o.Status);
+static Guid UserOf(ClaimsPrincipal u) => Guid.Parse(u.FindFirstValue("sub")!);
+static IPAddress? IpOf(HttpContext c) => c.Connection.RemoteIpAddress;
+
+staff.MapPost("/qr-tokens", async (ClaimsPrincipal u, QueueService q, HttpContext c) =>
+    Results.Json(await q.IssueQrAsync(ClinicOf(u), UserOf(u), IpOf(c)), statusCode: 201)).RequireRateLimiting("qr");
+staff.MapPost("/checkins", async (StaffCheckInRequest r, ClaimsPrincipal u, QueueService q, HttpContext c) =>
+    Send(await q.StaffCheckInAsync(ClinicOf(u), UserOf(u), r, IpOf(c)))).RequireAuthorization("Nurse");
+staff.MapGet("/queue", async (ClaimsPrincipal u, QueueService q) => Results.Ok(await q.ListAsync(ClinicOf(u))));
+staff.MapPatch("/queue/{id:guid}", async (Guid id, PatchRequest r, ClaimsPrincipal u, QueueService q, HttpContext c) =>
+    Send(await q.PatchAsync(ClinicOf(u), UserOf(u), id, r, IpOf(c)))).RequireAuthorization("Nurse");
+staff.MapGet("/audit", async (DateTimeOffset? from, DateTimeOffset? to, int? limit, ClaimsPrincipal u, QueueService q) =>
+    Results.Ok(await q.AuditAsync(ClinicOf(u), from, to, limit ?? 50))).RequireAuthorization("ClinicAdmin");
+
+var api = app.MapGroup("/api/v1").RequireAuthorization("Patient");
+api.MapPost("/checkins", async (CheckInRequest r, ClaimsPrincipal u, QueueService q, HttpContext c) =>
+    Send(await q.PatientCheckInAsync(ClinicOf(u), UserOf(u), r.Token, r.IdempotencyKey, IpOf(c)))).RequireRateLimiting("checkin");
+api.MapGet("/queue/me", async (ClaimsPrincipal u, QueueService q) => Results.Ok(await q.MineAsync(ClinicOf(u), UserOf(u))));
 
 static Guid ClinicOf(ClaimsPrincipal u) => Guid.Parse(u.FindFirstValue("clinic_id")!);
 

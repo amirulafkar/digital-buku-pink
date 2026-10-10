@@ -312,11 +312,11 @@ public class S1Tests(DbFixture fx)
 
         // No NRIC-pattern values in seeded data.
         var nric = new Regex(@"\d{6}-?\d{2}-?\d{4}");
-        // Scan every text-like column of every table (hash columns excluded: random strings).
+        // Scan every text-like column of every table (hash columns and client idempotency keys excluded: random strings).
         var textCols = new List<(string T, string C)>();
         await using (var cmd = new NpgsqlCommand(
             "SELECT table_name, column_name FROM information_schema.columns WHERE table_schema='public' " +
-            "AND data_type IN ('text','character varying','jsonb','json') AND column_name NOT LIKE '%hash'", c))
+            "AND data_type IN ('text','character varying','jsonb','json') AND column_name NOT LIKE '%hash' AND column_name <> 'idempotency_key'", c))
         await using (var rd = await cmd.ExecuteReaderAsync())
             while (await rd.ReadAsync()) textCols.Add((rd.GetString(0), rd.GetString(1)));
         Assert.Contains(("patient", "phone"), textCols);
@@ -325,7 +325,7 @@ public class S1Tests(DbFixture fx)
         {
             await using var cmd = new NpgsqlCommand($"SELECT \"{col}\"::text FROM \"{t}\" WHERE \"{col}\" IS NOT NULL", c);
             await using var rd = await cmd.ExecuteReaderAsync();
-            while (await rd.ReadAsync()) Assert.False(nricStrict.IsMatch(rd.GetString(0)), $"NRIC-like value in {t}.{col}");
+            while (await rd.ReadAsync()) Assert.False(nricStrict.IsMatch(Regex.Replace(rd.GetString(0), "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", "<uuid>")), $"NRIC-like value in {t}.{col}");
         }
 
         await using (var cmd = new NpgsqlCommand("SELECT count(*) FROM patient WHERE phone IN ('0100000001','0100000002','0100000003','0100000004') AND is_demo", c))

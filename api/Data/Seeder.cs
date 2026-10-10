@@ -13,8 +13,12 @@ public static class Seeder
 
     public static async Task<SeedResult> SeedAsync(AppDbContext db, string staffPassword, string codePepper)
     {
-        if (await db.Clinics.AnyAsync(c => c.Code == ClinicCode))
-            return new SeedResult([], true);
+        var s1Done = await db.Clinics.AnyAsync(c => c.Code == ClinicCode);
+        if (s1Done)
+        {
+            var s2Added = await SeedS2Async(db);
+            return new SeedResult([], !s2Added);
+        }
 
         var hasher = new PasswordHasher<UserAccount>();
         var clinic = new Clinic { Code = ClinicCode, Name = "KK Demo Satu" };
@@ -65,6 +69,19 @@ public static class Seeder
             });
         }
         await db.SaveChangesAsync();
+        await SeedS2Async(db);
         return new SeedResult(codes, false);
+    }
+
+    /// <summary>S2 additions: a second clinic and Nadia (no appointment). No queue or QR rows.</summary>
+    private static async Task<bool> SeedS2Async(AppDbContext db)
+    {
+        if (await db.Clinics.AnyAsync(c => c.Code == "KK-DEMO-2")) return false;
+        var c2 = new Clinic { Code = "KK-DEMO-2", Name = "KK Demo Dua" };
+        db.Clinics.Add(c2);
+        await db.SaveChangesAsync();
+        db.Patients.Add(new Patient { ClinicId = c2.Id, DisplayName = "Nadia (demo)", Phone = "0100000005", Language = "ms" });
+        await db.SaveChangesAsync();
+        return true;
     }
 }
