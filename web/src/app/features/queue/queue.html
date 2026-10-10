@@ -1,0 +1,109 @@
+<div class="page">
+  <div class="summary" role="group" [attr.aria-label]="i.t('summary.label')">
+    <div class="tile"><span class="ico"><i class="ph ph-user-circle" aria-hidden="true"></i></span><span class="t">{{ i.t('status.waiting') }}</span><span class="n">{{ num(count().waiting) }}</span></div>
+    <div class="tile lav"><span class="ico"><i class="ph ph-door-open" aria-hidden="true"></i></span><span class="t">{{ i.t('status.in_room') }}</span><span class="n">{{ num(count().in_room) }}</span></div>
+    <div class="tile"><span class="ico"><i class="ph ph-check-circle" aria-hidden="true"></i></span><span class="t">{{ i.t('status.completed') }}</span><span class="n">{{ num(count().completed) }}</span></div>
+    <div class="tile lav"><span class="ico"><i class="ph ph-person-simple-walk" aria-hidden="true"></i></span><span class="t">{{ i.t('summary.walkins') }}</span><span class="n">{{ num(count().walkin) }}</span></div>
+  </div>
+
+  <div class="cols">
+    <section class="panel board" aria-labelledby="queue-h">
+      <header class="head">
+        <div>
+          <h1 id="queue-h">{{ i.t('queue.title') }}</h1>
+          <p class="sub">{{ i.t('queue.order') }}</p>
+        </div>
+        @if (updated(); as u) { <p class="stamp">{{ i.t('queue.updated', { time: i.time(u) }) }}</p> }
+      </header>
+
+      @if (isAdmin()) { <p class="readonly" role="note"><i class="ph ph-eye" aria-hidden="true"></i>{{ i.t('queue.readonly') }}</p> }
+      <p class="live" role="status" aria-live="polite" [class.err]="message()">{{ message() }}</p>
+
+      <div class="tabs" role="group" [attr.aria-label]="i.t('filter.label')">
+        @for (t of tabs; track t) {
+          <button type="button" [attr.aria-pressed]="filter() === t" (click)="setFilter(t)" [attr.data-tab]="t">
+            {{ tabLabel(t) }} <span class="c">{{ num(count()[t === 'all' ? 'all' : t]) }}</span></button>
+        }
+      </div>
+
+      @if (failed()) {
+        <app-error [text]="i.t('queue.error')" (retry)="retry()" />
+      } @else if (!loaded()) {
+        <app-skeleton [count]="5" />
+      } @else if (entries().length === 0) {
+        <app-empty [text]="i.t('queue.empty')" icon="ph-list-checks">
+          @if (auth.isNurse()) { <a mat-stroked-button routerLink="/patients">{{ i.t('queue.empty.action') }}</a> }
+        </app-empty>
+      } @else if (visible().length === 0) {
+        <app-empty [text]="i.t('queue.filter.empty')" icon="ph-funnel" />
+      } @else {
+        <ul class="rows" data-testid="queue-list">
+          @for (e of visible(); track e.id) {
+            <li class="row" [attr.aria-label]="rowLabel(e)" [attr.data-no]="e.queueNo" [attr.data-status]="e.status" [class.closed]="isClosed(e)">
+              <span class="no">{{ e.queueNo }}</span>
+              <div class="who">
+                <span class="nm">{{ name(e) }}</span>
+                @if (!e.displayName) { <span class="tag">{{ i.t('queue.walkin') }}</span> }
+                <span class="time">{{ i.t('queue.checkedin', { time: i.time(e.checkedInAt) }) }}</span>
+              </div>
+              <div class="st">
+                <app-status-chip [status]="e.status" />
+                @if (e.urgent) { <app-status-chip status="urgent" /> }
+              </div>
+              <div class="rn"><div class="cell room"><span class="lbl">{{ i.t('queue.col.room') }}</span><span class="val" data-col="room">{{ room(e) ?? i.t('queue.unassigned') }}</span></div>
+              <div class="cell nurse"><span class="lbl">{{ i.t('queue.col.nurse') }}</span><span class="val" data-col="nurse">{{ nurse(e) ?? i.t('queue.unassigned') }}</span></div></div>
+              @if (!isAdmin()) {
+                <div class="acts">
+                  <button mat-stroked-button type="button" data-action="call" [class.primary]="e.status === 'waiting'" [attr.aria-label]="lbl('queue.call.label', e)"
+                    [disabled]="!canWrite() || busy() === e.id || e.status !== 'waiting'" (click)="move(e, 'called')">
+                    <i class="ph ph-megaphone" aria-hidden="true"></i>{{ i.t('queue.call') }}</button>
+                  <button mat-stroked-button type="button" data-action="inroom" [class.primary]="e.status === 'called'" [attr.aria-label]="lbl('queue.inroom.label', e)"
+                    [disabled]="!canWrite() || busy() === e.id || e.status !== 'called'" (click)="move(e, 'in_room')">
+                    <i class="ph ph-door-open" aria-hidden="true"></i>{{ i.t('queue.inroom') }}</button>
+                  <button mat-stroked-button type="button" data-action="complete" [attr.aria-label]="lbl('queue.done.label', e)"
+                    [disabled]="!canWrite() || busy() === e.id || e.status !== 'in_room'" (click)="move(e, 'completed')">
+                    <i class="ph ph-check-circle" aria-hidden="true"></i>{{ i.t('queue.complete') }}</button>
+                  <button mat-button type="button" data-action="missed" [attr.aria-label]="lbl('queue.missed.label', e)"
+                    [disabled]="!canWrite() || busy() === e.id || (e.status !== 'waiting' && e.status !== 'called')" (click)="askMissed(e)">
+                    <i class="ph ph-prohibit" aria-hidden="true"></i>{{ i.t('queue.missed') }}</button>
+                  <button mat-button type="button" data-action="assign" [attr.aria-label]="lbl('queue.assign.label', e)"
+                    [disabled]="!canWrite() || busy() === e.id || isClosed(e)" (click)="askAssign(e)">
+                    <i class="ph ph-user-gear" aria-hidden="true"></i>{{ i.t('queue.assign') }}</button>
+                </div>
+              }
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <aside class="rail">
+      @if (auth.isNurse()) {
+        <section class="panel" aria-labelledby="quick-h">
+          <h2 id="quick-h">{{ i.t('quick.title') }}</h2>
+          <div class="quick">
+            <a routerLink="/codes"><i class="ph ph-key" aria-hidden="true"></i>{{ i.t('quick.issue') }}</a>
+            <a routerLink="/patients"><i class="ph ph-magnifying-glass" aria-hidden="true"></i>{{ i.t('quick.find') }}</a>
+          </div>
+        </section>
+      } @else {
+        <section class="panel" aria-labelledby="quick-h">
+          <h2 id="quick-h">{{ i.t('quick.title') }}</h2>
+          <div class="quick"><a routerLink="/codes"><i class="ph ph-key" aria-hidden="true"></i>{{ i.t('quick.codes') }}</a></div>
+        </section>
+      }
+
+      <section class="panel" aria-labelledby="rooms-h">
+        <h2 id="rooms-h">{{ i.t('rooms.title') }}</h2>
+        @if (roomState().length === 0) { <p class="muted">{{ i.t('rooms.empty') }}</p> }
+        <ul class="rooms" data-testid="rooms-status">
+          @for (r of roomState(); track r.name) {
+            <li><span>{{ r.name }}</span>
+              <span class="rs" [class.use]="r.inUse"><i class="ph" [class]="r.inUse ? 'ph-door-open' : 'ph-door'" aria-hidden="true"></i>{{ r.inUse ? i.t('rooms.inuse') : i.t('rooms.free') }}</span></li>
+          }
+        </ul>
+        <p class="muted note">{{ i.t('rooms.note') }}</p>
+      </section>
+    </aside>
+  </div>
+</div>

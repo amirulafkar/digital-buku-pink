@@ -222,7 +222,7 @@ public class S1Tests(DbFixture fx)
         var cb = Client();
         cb.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tb.AccessToken);
         Assert.Equal(HttpStatusCode.NotFound, (await cb.GetAsync($"/api/v1/staff/patients/{a.PatientId}")).StatusCode);
-        var list = await cb.GetStringAsync("/api/v1/staff/patients");
+        var list = await (await cb.PostAsJsonAsync("/api/v1/staff/patients/search", new { q = "Test" })).Content.ReadAsStringAsync();
         Assert.DoesNotContain(a.PatientId.ToString(), list);
 
         var ta = await LoginOk(nurseA, Pw);
@@ -235,8 +235,8 @@ public class S1Tests(DbFixture fx)
         var tp = await LoginOk(pat.Phone, Pw);
         var cp = Client();
         cp.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tp.AccessToken);
-        Assert.Equal(HttpStatusCode.Forbidden, (await cp.GetAsync("/api/v1/staff/patients")).StatusCode);
-        Assert.Equal(HttpStatusCode.Unauthorized, (await Client().GetAsync("/api/v1/staff/patients")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await cp.PostAsJsonAsync("/api/v1/staff/patients/search", new { q = "Test" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Client().PostAsJsonAsync("/api/v1/staff/patients/search", new { q = "Test" })).StatusCode);
     }
 
     // T7

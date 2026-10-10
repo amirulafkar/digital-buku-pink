@@ -1,0 +1,95 @@
+.page { display: grid; gap: 1rem; min-width: 0; }
+
+// Summary strip: compact, display only (the tabs below are the filters).
+.summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; }
+.tile { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .6rem; min-height: 56px; padding: .35rem .85rem; color: var(--text);
+  background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-3); box-shadow: var(--neu-inset); }
+.ico { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: var(--r-2); background: var(--accent-soft); color: var(--accent-ink); font-size: 1.15rem; }
+.lav .ico { background: var(--lav-soft); color: var(--lav-ink); }
+.t { font-weight: 600; }
+.n { font-family: var(--font-head); font-size: 1.4rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+@media (min-width: 1800px) { .cols { grid-template-columns: minmax(0, 1fr) 19rem; } }
+.rail { display: grid; gap: 1.25rem; min-width: 0; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
+@media (min-width: 1800px) { .rail { grid-template-columns: 1fr; } }
+.board { container-type: inline-size; }
+
+.head { display: flex; justify-content: space-between; align-items: flex-start; gap: .5rem 1rem; flex-wrap: wrap; margin-bottom: .6rem; }
+h1 { margin: 0; font-family: var(--font-head); font-size: 1.75rem; letter-spacing: -0.01em; }
+.sub { margin: .25rem 0 0; color: var(--muted); }
+.stamp { margin: 0; color: var(--muted); font-size: .875rem; font-variant-numeric: tabular-nums; padding: .3rem .8rem; border-radius: var(--r-pill); box-shadow: var(--neu-inset); border: 1px solid var(--edge); }
+.readonly { display: flex; gap: .5rem; align-items: center; padding: .7rem 1rem; border-radius: var(--r-3); box-shadow: var(--neu-inset); border: 1px solid var(--edge); margin: 0 0 .75rem; }
+.live { min-height: 0; margin: 0 0 .25rem; color: var(--text); font-weight: 600; }
+.live:empty { display: none; }
+.live.err { color: var(--danger-ink); background: var(--danger-soft); border: 1px solid var(--danger); border-radius: var(--r-2); padding: .5rem .8rem; }
+.muted { color: var(--muted); margin: 0; }
+
+// Filter tabs.
+.tabs { display: flex; flex-wrap: wrap; gap: .5rem; padding: .3rem; margin-bottom: .85rem; border: 1px solid var(--edge); border-radius: var(--r-3); box-shadow: var(--neu-inset); }
+.tabs button { min-height: 44px; padding: 0 .9rem; display: inline-flex; align-items: center; gap: .45rem; font: inherit; font-weight: 600; color: var(--text); cursor: pointer;
+  background: transparent; border: 1px solid transparent; border-radius: var(--r-2); }
+.tabs button:hover { border-color: var(--edge); }
+.tabs button[aria-pressed=true] { background: var(--accent); color: var(--on-accent); box-shadow: var(--neu-raised-sm); }
+.c { font-variant-numeric: tabular-nums; font-weight: 700; }
+
+// Rows: raised bands in check-in order; finished ones are inset. Wide panel: actions in a right-hand column.
+.rows { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }
+.row { display: grid; grid-template-columns: 5rem minmax(9rem, 1fr) auto minmax(8.5rem, 9.5rem) minmax(15rem, 26rem); align-items: center; gap: .5rem 1rem; padding: .75rem 1rem;
+  border-radius: var(--r-3); background: var(--bg); border: 1px solid var(--card-edge); box-shadow: var(--neu-raised-sm); animation: rise var(--dur-long) var(--ease); }
+.row.closed { box-shadow: var(--neu-inset); color: var(--muted); }
+.no { font-family: var(--font-head); font-size: 1.9rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.who { display: flex; align-items: center; gap: .1rem .5rem; flex-wrap: wrap; min-width: 0; }
+.nm { font-weight: 700; overflow-wrap: anywhere; }
+.tag { font-size: .875rem; padding: .05rem .6rem; border-radius: var(--r-pill); border: 1px solid var(--edge); color: var(--muted); white-space: nowrap; box-shadow: var(--neu-inset); }
+.time { flex-basis: 100%; font-size: .875rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.st { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; }
+.rn { display: grid; gap: .3rem; min-width: 0; }
+.cell { display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: .5rem; line-height: 1.25; min-width: 0; }
+.lbl { font-size: .875rem; color: var(--muted); font-weight: 600; }
+.val { font-weight: 600; white-space: nowrap; }
+.acts { display: flex; gap: .4rem; flex-wrap: wrap; justify-content: flex-end; }
+.acts button { padding: 0 .7rem; min-height: 44px; box-sizing: border-box; }
+.acts button.primary:not(:disabled) { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.acts button i { margin-right: .3rem; font-size: 1.1rem; }
+
+// Narrow panel: stacked card, actions below.
+@container (max-width: 899.98px) {
+  .row { grid-template-columns: 5.5rem minmax(0, 1fr) minmax(0, 1fr); }
+  .who, .st { grid-column: 2 / -1; }
+  .rn { display: contents; }
+  .cell { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .cell.room { grid-column: 2; }
+  .cell.nurse { grid-column: 3; }
+  .acts { grid-column: 1 / -1; justify-content: flex-start; padding-top: .6rem; border-top: 1px solid var(--line); }
+}
+// Very narrow (320px reflow): single column of details.
+@container (max-width: 460px) {
+  .row { grid-template-columns: 4.25rem minmax(0, 1fr); }
+  .no { font-size: 1.6rem; }
+  .cell.room, .cell.nurse { grid-column: 2; grid-template-columns: auto 1fr; gap: .4rem; }
+  .val { white-space: normal; }
+}
+@media (max-width: 899.98px) { .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .t { font-size: .875rem; } .tile { padding: .35rem .6rem; gap: .4rem; } .stamp { white-space: normal; } }
+
+// Quick actions and rooms.
+.quick { display: grid; gap: .65rem; }
+.quick a { display: flex; align-items: center; gap: .65rem; min-height: 48px; padding: .5rem .9rem; border-radius: var(--r-2); text-decoration: none; color: var(--text); font-weight: 600;
+  background: var(--bg); border: 1px solid var(--edge); box-shadow: var(--neu-raised-sm); }
+.quick a:active { box-shadow: var(--neu-pressed); }
+.quick i { font-size: 1.3rem; color: var(--accent-ink); }
+.rooms { list-style: none; margin: 0 0 .75rem; padding: 0; display: grid; gap: .5rem; }
+.rooms li { display: flex; justify-content: space-between; align-items: center; gap: .75rem; padding: .35rem 0; border-bottom: 1px solid var(--line); font-weight: 600; }
+.rs { display: inline-flex; align-items: center; gap: .35rem; font-size: .875rem; font-weight: 700; padding: .15rem .65rem; border-radius: var(--r-pill); border: 1px solid var(--edge);
+  background: var(--bg); box-shadow: var(--neu-raised-sm); }
+.rs.use { background: var(--lav-soft); color: var(--lav-ink); box-shadow: var(--neu-inset); }
+.note { font-size: .875rem; }
+
+@keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+// Filter tabs stay on one row once the panel is wide enough (768 and up); tighter padding keeps BM labels together.
+@container (min-width: 520px) {
+  .tabs { flex-wrap: nowrap; overflow-x: auto; gap: .1rem; padding: .25rem; scrollbar-width: thin; }
+  .tabs button { padding: 0 .4rem; gap: .3rem; font-size: .9375rem; flex: 0 0 auto; white-space: nowrap; }
+}

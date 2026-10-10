@@ -1,0 +1,251 @@
+@use '@angular/material' as mat;
+@use '@fontsource-variable/geist';
+@use '@fontsource-variable/outfit';
+@use '@phosphor-icons/web/regular/style.css';
+
+// Material 3 base (component structure, state layers). No stock palette is emitted: colours, shape and type are bound to our own tokens below.
+html {
+  @include mat.theme((
+    typography: (plain-family: "'Geist Variable', system-ui, sans-serif", brand-family: "'Outfit Variable', system-ui, sans-serif"),
+    density: 0,
+  ));
+}
+
+// ---- Design tokens: "Blush paper", neumorphic (soft UI). One accent (berry); surfaces share the canvas colour. ----
+:root {
+  --font-ui: 'Geist Variable', system-ui, sans-serif;
+  --font-head: 'Outfit Variable', 'Geist Variable', system-ui, sans-serif;
+
+  // One radius scale: controls 12, cards 16, pills.
+  --r-1: 8px; --r-2: 12px; --r-3: 16px; --r-pill: 999px;
+  --dur: 140ms; --dur-long: 280ms; --ease: cubic-bezier(.2, .7, .2, 1);
+
+  color-scheme: light;
+  --bg: #fdf3f6;
+  --surface: #fdf3f6;
+  --surface-2: #f9e6ee;
+  --line: #f3d6e0;          // hairline, decoration only
+  --edge: #9c7b8e;          // 3:1 border for interactive controls (non-text contrast)
+  --text: #2a1230;
+  --muted: #6b4a5c;
+  --accent: #a02e6d;
+  --on-accent: #ffffff;
+  --accent-soft: #fde0ec;
+  --accent-ink: #7a1f52;
+  --accent-ink-strong: #a02e6d;
+  --lav-soft: #e6e0f5;
+  --lav-ink: #3a2a6b;
+  --danger: #b3261d;
+  --danger-soft: #fbdcd8;
+  --danger-ink: #7d1a13;
+  --warn-soft: #f6e7c8;
+  --warn-ink: #5a3d00;
+  --card-edge: var(--line);
+
+  // Raised = actionable or active. Inset = fields and finished items. Pressed = while held.
+  --neu-hi: rgba(255, 255, 255, .9);
+  --neu-lo: rgba(160, 46, 109, .16);
+  --neu-raised: -6px -6px 12px var(--neu-hi), 6px 6px 14px var(--neu-lo);
+  --neu-raised-sm: -3px -3px 7px var(--neu-hi), 3px 3px 8px var(--neu-lo);
+  --neu-inset: inset 3px 3px 7px var(--neu-lo), inset -3px -3px 7px var(--neu-hi);
+  --neu-pressed: inset 2px 2px 5px rgba(160, 46, 109, .24), inset -2px -2px 5px rgba(255, 255, 255, .8);
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #2a1a24;
+  --surface: #2a1a24;
+  --surface-2: #34212d;
+  --line: #4a3140;
+  --edge: #a98799;
+  --text: #f7e9f0;
+  --muted: #d0b3c2;
+  --accent: #f48fb1;
+  --on-accent: #2a1230;
+  --accent-soft: #4d2a3d;
+  --accent-ink: #fdd3e3;
+  --accent-ink-strong: #f48fb1;
+  --lav-soft: #3b3358;
+  --lav-ink: #ddd5f7;
+  --danger: #f0a39b;
+  --danger-soft: #4a2321;
+  --danger-ink: #f9c9c4;
+  --warn-soft: #43361a;
+  --warn-ink: #f2dca4;
+  --card-edge: var(--edge);   // dark: cards need a 3:1 outline
+
+  // Lighter plum highlight, deeper shadow.
+  --neu-hi: rgba(120, 72, 102, .38);
+  --neu-lo: rgba(12, 4, 9, .6);
+  --neu-pressed: inset 2px 2px 5px rgba(12, 4, 9, .65), inset -2px -2px 5px rgba(120, 72, 102, .32);
+}
+
+// ---- Bind Material system tokens to ours (both themes follow automatically). ----
+:root, html[data-theme='dark'] {
+  --mat-sys-primary: var(--accent);
+  --mat-sys-on-primary: var(--on-accent);
+  --mat-sys-primary-container: var(--accent-soft);
+  --mat-sys-on-primary-container: var(--accent-ink);
+  --mat-sys-secondary: var(--accent);
+  --mat-sys-on-secondary: var(--on-accent);
+  --mat-sys-secondary-container: var(--accent-soft);
+  --mat-sys-on-secondary-container: var(--accent-ink);
+  --mat-sys-tertiary: var(--accent);
+  --mat-sys-background: var(--bg);
+  --mat-sys-on-background: var(--text);
+  --mat-sys-surface: var(--bg);
+  --mat-sys-on-surface: var(--text);
+  --mat-sys-on-surface-variant: var(--muted);
+  --mat-sys-surface-variant: var(--surface-2);
+  --mat-sys-surface-container-lowest: var(--bg);
+  --mat-sys-surface-container-low: var(--bg);
+  --mat-sys-surface-container: var(--bg);
+  --mat-sys-surface-container-high: var(--surface-2);
+  --mat-sys-surface-container-highest: var(--surface-2);
+  --mat-sys-surface-dim: var(--bg);
+  --mat-sys-surface-bright: var(--bg);
+  --mat-sys-surface-tint: transparent;
+  --mat-sys-outline: var(--edge);
+  --mat-sys-outline-variant: var(--line);
+  --mat-sys-error: var(--danger);
+  --mat-sys-on-error: var(--bg);
+  --mat-sys-error-container: var(--danger-soft);
+  --mat-sys-on-error-container: var(--danger-ink);
+  --mat-sys-inverse-surface: var(--text);
+  --mat-sys-inverse-on-surface: var(--bg);
+  --mat-sys-inverse-primary: var(--accent);
+  --mat-sys-scrim: #1a0a14;
+  --mat-sys-shadow: #1a0a14;
+
+  --mat-sys-corner-extra-small: var(--r-1);
+  --mat-sys-corner-small: var(--r-1);
+  --mat-sys-corner-medium: var(--r-2);
+  --mat-sys-corner-large: var(--r-3);
+  --mat-sys-corner-extra-large: var(--r-3);
+  --mat-sys-corner-full: var(--r-2);
+
+  // Fields: outline in the 3:1 edge colour, thicker accent outline on focus.
+  --mat-form-field-outlined-outline-color: var(--edge);
+  --mat-form-field-outlined-hover-outline-color: var(--text);
+  --mat-form-field-outlined-focus-outline-color: var(--accent);
+  --mat-form-field-outlined-outline-width: 1px;
+  --mat-form-field-outlined-focus-outline-width: 2px;
+  --mat-form-field-outlined-container-shape: var(--r-2);
+
+  // Buttons: shape and colours; soft shadows are applied below.
+  --mat-button-outlined-container-shape: var(--r-2);
+  --mat-button-filled-container-shape: var(--r-2);
+  --mat-button-text-container-shape: var(--r-2);
+  --mat-button-outlined-outline-color: var(--edge);
+  --mat-button-outlined-label-text-color: var(--accent-ink);
+  --mat-button-text-label-text-color: var(--accent-ink);
+  --mat-button-filled-container-color: var(--accent);
+  --mat-button-filled-label-text-color: var(--on-accent);
+  --mat-button-filled-disabled-container-color: transparent;
+  --mat-button-filled-disabled-label-text-color: var(--muted);
+  --mat-button-outlined-disabled-label-text-color: var(--muted);
+  --mat-button-outlined-disabled-outline-color: var(--line);
+  --mat-button-text-disabled-label-text-color: var(--muted);
+
+  // Switch: a plain on/off pill with a raised handle (icons are hidden in the markup).
+  --mat-slide-toggle-handle-shape: var(--r-pill);
+  --mat-slide-toggle-track-shape: var(--r-pill);
+  --mat-slide-toggle-unselected-track-color: var(--surface-2);
+  --mat-slide-toggle-unselected-hover-track-color: var(--surface-2);
+  --mat-slide-toggle-unselected-focus-track-color: var(--surface-2);
+  --mat-slide-toggle-unselected-pressed-track-color: var(--surface-2);
+  --mat-slide-toggle-unselected-track-outline-color: var(--edge);
+  --mat-slide-toggle-unselected-handle-color: var(--edge);
+  --mat-slide-toggle-unselected-hover-handle-color: var(--edge);
+  --mat-slide-toggle-unselected-focus-handle-color: var(--edge);
+  --mat-slide-toggle-unselected-pressed-handle-color: var(--edge);
+  --mat-slide-toggle-selected-track-color: var(--accent);
+  --mat-slide-toggle-selected-hover-track-color: var(--accent);
+  --mat-slide-toggle-selected-focus-track-color: var(--accent);
+  --mat-slide-toggle-selected-pressed-track-color: var(--accent);
+  --mat-slide-toggle-selected-handle-color: var(--on-accent);
+  --mat-slide-toggle-selected-hover-handle-color: var(--on-accent);
+  --mat-slide-toggle-selected-focus-handle-color: var(--on-accent);
+  --mat-slide-toggle-selected-pressed-handle-color: var(--on-accent);
+  --mat-slide-toggle-track-outline-width: 2px;
+  --mat-slide-toggle-selected-track-outline-width: 2px;
+  --mat-slide-toggle-selected-track-outline-color: var(--accent);
+  --mat-slide-toggle-label-text-color: var(--text);
+
+  --mat-dialog-container-color: var(--bg);
+  --mat-dialog-container-shape: var(--r-3);
+  --mat-dialog-supporting-text-color: var(--text);
+  --mat-dialog-subhead-color: var(--text);
+  --mat-select-panel-background-color: var(--bg);
+  --mat-select-enabled-trigger-text-color: var(--text);
+  --mat-select-enabled-arrow-color: var(--text);
+  --mat-option-label-text-color: var(--text);
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; min-height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { font-family: var(--font-head); font-weight: 600; }
+a { color: var(--accent-ink-strong); }
+
+// Strong, visible focus ring on every focusable element: 2px solid accent with an offset.
+:focus-visible, .mat-mdc-button-base:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.mat-focus-indicator::before { display: none; }
+
+// ---- Neumorphic controls: shape is always visible (1px border plus shadow), never shadow alone. ----
+.mat-mdc-outlined-button, .mat-mdc-button, .mat-mdc-unelevated-button {
+  background: var(--bg);
+  border: 1px solid var(--edge);
+  box-shadow: var(--neu-raised-sm);
+  transition: box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease);
+  &:not(:disabled):active { box-shadow: var(--neu-pressed); transform: translateY(1px); }
+  &:disabled, &[disabled] { box-shadow: none; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); opacity: .85; cursor: not-allowed; }
+}
+.mat-mdc-unelevated-button:not(:disabled) { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.mat-mdc-button:not(:disabled), .mat-mdc-outlined-button:not(:disabled) { color: var(--accent-ink); }
+
+// Fields sit inside the surface (inset).
+.mat-mdc-form-field .mdc-text-field--outlined { background: var(--bg); border-radius: var(--r-2); box-shadow: var(--neu-inset); }
+.mat-mdc-form-field .mdc-text-field--outlined .mdc-text-field__input { color: var(--text); caret-color: var(--accent); }
+.mat-mdc-form-field .mat-mdc-floating-label { color: var(--muted); }
+.mat-mdc-form-field-subscript-wrapper { display: none; }
+
+.mat-mdc-select-panel { background: var(--bg); border: 1px solid var(--edge); border-radius: var(--r-2); box-shadow: var(--neu-raised); }
+.mat-mdc-option:hover, .mat-mdc-option.mdc-list-item--selected { background: var(--accent-soft); }
+.mat-mdc-dialog-surface { box-shadow: var(--neu-raised) !important; border: 1px solid var(--line); }
+
+// Switch: track inset, handle raised.
+.mat-mdc-slide-toggle .mdc-switch__track::before { box-shadow: var(--neu-inset); }
+.mat-mdc-slide-toggle .mdc-switch__handle::after { box-shadow: var(--neu-raised-sm); }
+
+// Touch targets: every button is at least 44px tall.
+.mat-mdc-outlined-button, .mat-mdc-button, .mat-mdc-unelevated-button { min-height: 44px; }
+.mat-mdc-select, .mat-mdc-form-field input { min-height: 44px; }
+// Long Bahasa Malaysia labels wrap inside a button instead of overflowing the screen (320px reflow).
+.mat-mdc-button-base { height: auto; max-width: 100%; }
+.mat-mdc-button-base .mdc-button__label { white-space: normal; text-align: left; }
+.mat-mdc-slide-toggle { min-height: 44px; display: inline-flex; align-items: center; }
+.mat-mdc-slide-toggle .mdc-form-field { min-height: 44px; }
+
+// Shared card and helpers.
+.panel { padding: 1.25rem; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); box-shadow: var(--neu-raised); min-width: 0; }
+@media (max-width: 420px) { .panel { padding: .9rem; } }
+.panel > h2 { margin: 0 0 .75rem; font-size: 1.15rem; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+// Icons: one family (Phosphor regular).
+.ph { line-height: 1; vertical-align: -0.15em; }
+
+// Motion: transform and shadow/opacity only, and none when the user asks for less.
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+}

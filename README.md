@@ -10,6 +10,8 @@ Fictional data only. This is a prototype and is not MOH-approved.
 4. Run the API with env: `ConnectionStrings__Default` (app role `dbp_app`) and `Auth__Key`.
 5. Tests (needs the Postgres container up and db/.env): `dotnet test api/DigitalBukuPink.slnx`.
 
-Layout: `api/` (Api, Data, Tests), `db/`, `web/` (stub), `mobile/` (stub), `docs/`.
+Staff web (S3): see `web/README.md` (`npm install --legacy-peer-deps`, `npm start`, `npm test`, `npm run e2e`). `db/dev-api.sh` runs the API on 127.0.0.1:5080 for the UI and e2e (dev only).
 
-Notes: CORS and HSTS are not configured in the API; confirm them at the reverse proxy later. Auth endpoints are rate limited per IP (`Auth:RateLimitPerMinute`). Set `CODE_PEPPER` and `JWT_KEY` (at least 32 bytes) in db/.env; the API refuses to start without them. `seed` runs only with `ASPNETCORE_ENVIRONMENT=Development`. After pulling the pepper change, run `CONFIRM_RESET=yes db/seed/reset.sh`.
+Layout: `api/` (Api, Data, Tests), `db/`, `web/` (Angular staff dashboard), `mobile/` (stub), `docs/`.
+
+Notes: CORS and HSTS are not configured in the API; confirm them at the reverse proxy later. Auth endpoints are rate limited per IP (`Auth:RateLimitPerMinute`); check-in, QR, activation-code issue and patient search are rate limited per user (`Auth:CheckinPerMinute`, `Auth:QrPerMinute`, `Auth:SearchPerMinute`, default 60). Patient search is `POST /api/v1/staff/patients/search` with a JSON body so the typed text never appears in a URL. Serve the web app behind a reverse proxy with a strict Content-Security-Policy (the app also ships a CSP meta tag) plus HSTS. Set `CODE_PEPPER` and `JWT_KEY` (at least 32 bytes) in db/.env; the API refuses to start without them. `seed` runs only with `ASPNETCORE_ENVIRONMENT=Development`. After pulling the pepper change, run `CONFIRM_RESET=yes db/seed/reset.sh`.

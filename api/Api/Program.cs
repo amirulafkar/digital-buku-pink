@@ -24,6 +24,7 @@ builder.Services.AddScoped<AppointmentRepository>();
 builder.Services.AddScoped<RoomRepository>();
 builder.Services.AddScoped<QueueRepository>();
 builder.Services.AddScoped<QueueService>();
+builder.Services.AddScoped<StaffService>();
 builder.Services.AddOpenApi();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
@@ -52,7 +53,7 @@ builder.Services.AddRateLimiter(o =>
             _ => new FixedWindowRateLimiterOptions { PermitLimit = limit, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 });
     });
     // Separate per-user buckets so a clinic's shared Wi-Fi (one IP) is not throttled together.
-    foreach (var (name, pick) in new (string, Func<AuthOptions, int>)[] { ("checkin", a => a.CheckinPerMinute), ("qr", a => a.QrPerMinute) })
+    foreach (var (name, pick) in new (string, Func<AuthOptions, int>)[] { ("checkin", a => a.CheckinPerMinute), ("qr", a => a.QrPerMinute), ("search", a => a.SearchPerMinute) })
         o.AddPolicy(name, ctx =>
         {
             var limit = pick(ctx.RequestServices.GetRequiredService<IOptions<AuthOptions>>().Value);
@@ -123,8 +124,15 @@ auth.MapPost("/activate", async (ActivateRequest r, AuthService s, HttpContext c
 
 // Staff routes: clinic comes from the token claim only.
 var staff = app.MapGroup("/api/v1/staff").RequireAuthorization("Staff");
-staff.MapGet("/patients", async (ClaimsPrincipal u, PatientRepository repo) =>
-    Results.Ok((await repo.ListAsync(ClinicOf(u))).Select(PatientDto.From)));
+// Search text travels in the JSON body only, never in a URL (URLs end up in logs, history and proxies).
+staff.MapPost("/patients/search", async (SearchRequest r, ClaimsPrincipal u, StaffService s, HttpContext c) =>
+    Send(await s.SearchPatientsAsync(ClinicOf(u), UserOf(u), r.Q, r.Limit, IpOf(c)))).RequireAuthorization("Nurse").RequireRateLimiting("search");
+staff.MapGet("/nurses", async (ClaimsPrincipal u, StaffService s) => Results.Ok(await s.NursesAsync(ClinicOf(u))));
+staff.MapPost("/activation-codes", async (IssueCodeRequest r, ClaimsPrincipal u, StaffService s, HttpContext c) =>
+    Send(await s.IssueCodeAsync(ClinicOf(u), UserOf(u), r.PatientId, IpOf(c)))).RequireAuthorization("Nurse").RequireRateLimiting("qr");
+// Read-only list: clinic_admin may view (human decision); the code and hash are never returned.
+staff.MapGet("/activation-codes", async (Guid? patientId, ClaimsPrincipal u, StaffService s) =>
+    Results.Ok(await s.ListCodesAsync(ClinicOf(u), patientId)));
 staff.MapGet("/patients/{id:guid}", async (Guid id, ClaimsPrincipal u, PatientRepository repo) =>
     await repo.GetAsync(ClinicOf(u), id) is { } p ? Results.Ok(PatientDto.From(p)) : Results.NotFound());
 staff.MapGet("/rooms", async (ClaimsPrincipal u, RoomRepository repo) =>
@@ -155,6 +163,7 @@ static Guid ClinicOf(ClaimsPrincipal u) => Guid.Parse(u.FindFirstValue("clinic_i
 
 app.Run();
 
+public record SearchRequest(string? Q, int? Limit);
 public record LoginRequest(string Identifier, string Password, string? DeviceName = null);
 public record RefreshRequest(string RefreshToken);
 public record ActivateRequest(string Code, string Phone, string Password);

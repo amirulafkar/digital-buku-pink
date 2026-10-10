@@ -23,6 +23,7 @@ public class AuthOptions
     public int RateLimitPerMinute { get; set; } = 10;
     public int CheckinPerMinute { get; set; } = 30; // per user
     public int QrPerMinute { get; set; } = 12;      // per user
+    public int SearchPerMinute { get; set; } = 60;  // per user
 }
 
 public record TokenResponse(string AccessToken, string RefreshToken, int ExpiresIn, string Role);
@@ -186,19 +187,23 @@ public class AuthService(AppDbContext db, Microsoft.Extensions.Options.IOptions<
                            select new { CodeId = c.Id, PatientId = p.Id, p.ClinicId }).FirstOrDefaultAsync();
         if (match is null) return await Fail("code_invalid");
 
+        // Same lock order as code issue (patient row first, then activation_code): no deadlock between the two.
+        await db.Database.ExecuteSqlInterpolatedAsync($"SELECT 1 FROM patient WHERE id = {match.PatientId} FOR UPDATE");
+
         // Only a Pending account (or none yet) may be activated; a code never overwrites an Active or Disabled account's password.
         var acc = await db.UserAccounts.FirstOrDefaultAsync(a => a.PatientId == match.PatientId);
         if (acc is not null && acc.Status != AccountStatus.Pending) return await Fail("account_not_pending");
-        if (acc is null)
-        {
-            acc = new UserAccount { PatientId = match.PatientId };
-            db.UserAccounts.Add(acc);
-        }
 
-        // Single use: only one concurrent caller can flip used_at from null.
-        var used = await db.ActivationCodes.Where(c => c.Id == match.CodeId && c.UsedAt == null)
+        // Single use, and still valid now that the patient is locked (an issue may have just revoked it).
+        var used = await db.ActivationCodes.Where(c => c.Id == match.CodeId && c.UsedAt == null && c.ExpiresAt > now)
             .ExecuteUpdateAsync(s => s.SetProperty(c => c.UsedAt, now));
         if (used != 1) return await Fail("code_invalid");
+
+        if (acc is null)
+        {
+            acc = new UserAccount { PatientId = match.PatientId }; // only after a successful redeem: a failed one leaves no rows
+            db.UserAccounts.Add(acc);
+        }
 
         acc.PasswordHash = Hasher.HashPassword(acc, password!);
         acc.Status = AccountStatus.Active;

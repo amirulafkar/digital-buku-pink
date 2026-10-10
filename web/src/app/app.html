@@ -1,0 +1,60 @@
+<a class="skip" href="#main">{{ i.t('app.skip') }}</a>
+<div class="shell" [class.in]="auth.signedIn()">
+  <aside class="side">
+    <a class="brand" routerLink="/queue">
+      <i class="ph ph-heartbeat" aria-hidden="true"></i>
+      <span class="name">{{ i.t('app.name') }}</span>
+      <span class="demo">{{ i.t('app.demo') }}</span>
+    </a>
+
+    @if (auth.signedIn()) {
+      <nav [attr.aria-label]="i.t('nav.label')">
+        <a routerLink="/queue" routerLinkActive="on"><i class="ph ph-list-numbers" aria-hidden="true"></i>{{ i.t('nav.queue') }}</a>
+        @if (auth.isNurse()) {
+          <a routerLink="/patients" routerLinkActive="on"><i class="ph ph-users" aria-hidden="true"></i>{{ i.t('nav.patients') }}</a>
+        }
+        <a routerLink="/codes" routerLinkActive="on"><i class="ph ph-key" aria-hidden="true"></i>{{ i.t('nav.codes') }}</a>
+      </nav>
+
+      @if (wide()) { <div class="notice-slot"><app-moh-notice /></div> }
+
+      <div class="user">
+        <span class="avatar" aria-hidden="true">{{ initials() }}</span>
+        <span class="who">
+          @if (auth.username(); as u) { <strong>{{ u }}</strong><small>{{ roleLabel() }}</small> } @else { <strong>{{ roleLabel() }}</strong> }
+        </span>
+        <button type="button" class="out" (click)="logout()" [attr.aria-label]="i.t('nav.logout')"><i class="ph ph-sign-out" aria-hidden="true"></i><span class="out-t">{{ i.t('nav.logout') }}</span></button>
+      </div>
+    }
+  </aside>
+
+  <div class="col">
+    <header class="top">
+      @if (auth.isNurse()) {
+        <form class="search" role="search" (ngSubmit)="search()">
+          <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+          <input type="search" name="q" [(ngModel)]="q" [attr.aria-label]="i.t('nav.search')" [placeholder]="i.t('nav.search')" autocomplete="off" data-testid="global-search" />
+        </form>
+      } @else { <span class="grow"></span> }
+
+      <div class="lang" role="group" [attr.aria-label]="i.t('nav.language')">
+        <button type="button" [attr.aria-pressed]="i.lang() === 'en'" (click)="i.set('en')" lang="en">EN</button>
+        <button type="button" [attr.aria-pressed]="i.lang() === 'ms'" (click)="i.set('ms')" lang="ms">BM</button>
+      </div>
+      <button type="button" class="icon" (click)="theme.toggle()" [attr.aria-label]="isDark() ? i.t('nav.theme.light') : i.t('nav.theme.dark')">
+        <i class="ph" [class]="isDark() ? 'ph-sun' : 'ph-moon'" aria-hidden="true"></i>
+      </button>
+      @if (auth.isNurse()) {
+        <button type="button" class="cta" (click)="walkIn()" [disabled]="conn.offline()" data-testid="topbar-walkin">
+          <i class="ph ph-user-plus" aria-hidden="true"></i>{{ i.t('nav.walkin') }}</button>
+      }
+    </header>
+    <app-offline-banner />
+
+    <main id="main" tabindex="-1"><router-outlet /></main>
+
+    @if (!wide() || !auth.signedIn()) { <footer><app-moh-notice /></footer> }
+  </div>
+</div>
+
+@if (toast(); as t) { <div class="toast" role="status">{{ t }}</div> }

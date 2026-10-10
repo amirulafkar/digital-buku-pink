@@ -14,7 +14,7 @@ public record Outcome<T>(T? Value, int Status = 200, string? Code = null, string
 public record CheckInDto(Guid QueueEntryId, string QueueNo, string Status, DateTimeOffset CheckedInAt);
 public record MyQueueDto(string? QueueNo, string? Status, DateTimeOffset? UpdatedAt);
 public record QrIssueDto(string Token, DateTimeOffset ExpiresAt);
-public record PatchRequest(string? Status, Guid? RoomId, Guid? StaffId, string? Reason);
+public record PatchRequest(string? Status, Guid? RoomId, Guid? StaffId, string? Reason, bool? Urgent = null, string? UrgentReason = null);
 public record StaffCheckInRequest(Guid? PatientId, string? WalkInName, string? IdempotencyKey);
 public record CheckInRequest(string? Token, string? IdempotencyKey);
 
@@ -26,6 +26,8 @@ public class QueueService(AppDbContext db, QueueRepository queue, PatientReposit
 {
     public const int QrLifeSeconds = 60;
     static readonly string[] ReasonCodes = ["no_answer", "left_clinic", "other"];
+    // Urgent reasons are fixed non-clinical codes set by staff; the system never sets urgency.
+    public static readonly string[] UrgentCodes = ["staff_judgement", "accessibility_need", "family_request", "other"];
 
     // ---------- time ----------
     private static TimeZoneInfo Tz(string id)
@@ -177,7 +179,8 @@ public class QueueService(AppDbContext db, QueueRepository queue, PatientReposit
             {
                 id = r.Id, queueNo = r.QueueNo,
                 displayName = r.PatientId is { } pid ? names.GetValueOrDefault(pid) : null,
-                walkInName = r.WalkInName, status = r.Status, roomId = r.RoomId, staffId = r.StaffId, checkedInAt = r.CheckedInAt,
+                walkInName = r.WalkInName, status = r.Status, roomId = r.RoomId, staffId = r.StaffId,
+                urgent = r.Urgent, urgentReason = r.UrgentReason, source = r.Source, checkedInAt = r.CheckedInAt,
             }),
         };
     }
@@ -191,7 +194,7 @@ public class QueueService(AppDbContext db, QueueRepository queue, PatientReposit
 
     public async Task<Outcome<object>> PatchAsync(Guid clinicId, Guid userId, Guid id, PatchRequest req, IPAddress? ip)
     {
-        if (req.Status is null && req.RoomId is null && req.StaffId is null)
+        if (req.Status is null && req.RoomId is null && req.StaffId is null && req.Urgent is null)
             return Outcome<object>.Fail(400, "invalid_request", "Nothing to change.");
         if (req.Status is not null && req.Status is not (QueueStatus.Called or QueueStatus.InRoom or QueueStatus.Completed or QueueStatus.Missed))
             return Outcome<object>.Fail(409, "invalid_transition", "Invalid transition.");
@@ -199,6 +202,9 @@ public class QueueService(AppDbContext db, QueueRepository queue, PatientReposit
             return Outcome<object>.Fail(422, "reason_required", "Reason is required for missed.");
         if (req.Reason is not null && !ReasonCodes.Contains(req.Reason))
             return Outcome<object>.Fail(422, "invalid_reason", "Reason must be a code: " + string.Join(", ", ReasonCodes));
+
+        if (req.Urgent == true && (req.UrgentReason is null || !UrgentCodes.Contains(req.UrgentReason)))
+            return Outcome<object>.Fail(422, "urgent_reason_required", "A reason code is required for urgent: " + string.Join(", ", UrgentCodes));
 
         await using var tx = await db.Database.BeginTransactionAsync();
         var e = await queue.GetForUpdateAsync(clinicId, id);
@@ -212,7 +218,7 @@ public class QueueService(AppDbContext db, QueueRepository queue, PatientReposit
         var terminal = e.Status is QueueStatus.Completed or QueueStatus.Missed;
         if (req.Status is not null && (!Allowed.TryGetValue(e.Status, out var next) || !next.Contains(req.Status)))
             return Outcome<object>.Fail(409, "invalid_transition", "Invalid transition.");
-        if ((req.RoomId is not null || req.StaffId is not null) && terminal)
+        if ((req.RoomId is not null || req.StaffId is not null || req.Urgent is not null) && terminal)
             return Outcome<object>.Fail(409, "invalid_transition", "Entry is closed.");
 
         if (req.Status is { } to)
@@ -231,9 +237,15 @@ public class QueueService(AppDbContext db, QueueRepository queue, PatientReposit
             if (req.StaffId is not null) e.StaffId = req.StaffId;
             Audit.Add(db, userId, clinicId, "assign", "queue_entry", e.Id, ip, new { roomId = e.RoomId, staffId = e.StaffId });
         }
+        if (req.Urgent is { } urgent && (urgent != e.Urgent || (urgent && req.UrgentReason != e.UrgentReason)))
+        {
+            e.Urgent = urgent;
+            e.UrgentReason = urgent ? req.UrgentReason : null;
+            Audit.Add(db, userId, clinicId, "urgent", "queue_entry", e.Id, ip, new { urgent, reasonCode = e.UrgentReason });
+        }
         await db.SaveChangesAsync();
         await tx.CommitAsync();
-        return new(new { id = e.Id, queueNo = e.QueueNo, status = e.Status, roomId = e.RoomId, staffId = e.StaffId, checkedInAt = e.CheckedInAt });
+        return new(new { id = e.Id, queueNo = e.QueueNo, status = e.Status, roomId = e.RoomId, staffId = e.StaffId, urgent = e.Urgent, urgentReason = e.UrgentReason, checkedInAt = e.CheckedInAt });
     }
 
     // ---------- audit read ----------

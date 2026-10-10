@@ -66,6 +66,7 @@ public class DbFixture : IAsyncLifetime
         Environment.SetEnvironmentVariable("Auth__RateLimitPerMinute", "100000");
         Environment.SetEnvironmentVariable("Auth__CheckinPerMinute", "100000");
         Environment.SetEnvironmentVariable("Auth__QrPerMinute", "100000");
+        Environment.SetEnvironmentVariable("Auth__SearchPerMinute", "100000");
         Environment.SetEnvironmentVariable("Auth__Key", "test-signing-key-" + Guid.NewGuid().ToString("N"));
         Factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
             b.ConfigureTestServices(s => s.AddTransient<IStartupFilter, FakeIpFilter>()));

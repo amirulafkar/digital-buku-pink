@@ -1,0 +1,69 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Dashboard layout preview</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+body{margin:0;background:#fdf3f6;font-family:Outfit,Geist,"Segoe UI",system-ui,sans-serif;color:#2a1230}
+.d{display:grid;grid-template-columns:200px minmax(0,1fr);gap:22px;padding:24px;font-size:14px;line-height:1.45;min-height:100vh;box-sizing:border-box}
+.r{background:#fdf3f6;border-radius:20px;box-shadow:-6px -6px 12px rgba(255,255,255,.95),6px 6px 14px rgba(160,46,109,.14)}
+.i{background:#fdf3f6;border-radius:14px;box-shadow:inset 3px 3px 7px rgba(160,46,109,.14),inset -3px -3px 7px rgba(255,255,255,.9)}
+.nav{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:14px;color:#6b4a5c}
+.nav.on{color:#7a1f52;font-weight:600;box-shadow:inset 3px 3px 7px rgba(160,46,109,.14),inset -3px -3px 7px rgba(255,255,255,.9)}
+.tile{padding:14px;display:grid;gap:6px}.tile b{font-size:28px;font-weight:600}
+.ic{width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.tab{padding:7px 14px;border-radius:999px;color:#6b4a5c;white-space:nowrap}.tab.on{background:#a02e6d;color:#fff;font-weight:600}
+.q{display:grid;grid-template-columns:70px minmax(0,1fr) 120px 90px 100px;gap:12px;align-items:center;padding:12px 16px;border-radius:16px;margin-bottom:10px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:999px;font-size:12px;width:fit-content}
+.btn{padding:6px 14px;border-radius:999px;font-size:13px;font-weight:600;text-align:center;border:1.5px solid #a02e6d;color:#7a1f52}
+</style></head><body>
+<div class="d">
+  <div class="r" style="padding:16px;display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;align-items:center;gap:8px;padding:2px 4px 14px;font-weight:600;font-size:16px"><i class="ti ti-heartbeat" style="color:#a02e6d;font-size:24px"></i>Buku Pink</div>
+    <div class="nav on"><i class="ti ti-list-numbers" style="font-size:19px"></i>Queue</div>
+    <div class="nav"><i class="ti ti-users" style="font-size:19px"></i>Patients</div>
+    <div class="nav"><i class="ti ti-key" style="font-size:19px"></i>Codes</div>
+    <div style="flex:1"></div>
+    <div class="i" style="padding:12px;font-size:12px;color:#6b4a5c"><i class="ti ti-info-circle" style="font-size:16px;color:#a02e6d"></i> Prototype. Not approved by the Ministry of Health. All data is fictional.</div>
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 2px"><span class="ic" style="background:#fde0ec;color:#7a1f52;border-radius:50%;font-weight:600">AI</span><span>Aini<br><span style="color:#6b4a5c;font-size:12px">Nurse</span></span></div>
+  </div>
+  <div style="display:grid;gap:22px;min-width:0;align-content:start">
+    <div style="display:flex;align-items:center;gap:14px">
+      <div class="i" style="flex:1;padding:13px 18px;color:#6b4a5c;display:flex;align-items:center;gap:10px"><i class="ti ti-search" style="font-size:18px"></i>Search name or phone digits</div>
+      <div class="r" style="padding:10px 14px;font-weight:600"><span style="color:#a02e6d">EN</span> | BM</div>
+      <div class="r ic" style="width:42px;height:42px"><i class="ti ti-moon"></i></div>
+      <div class="r" style="padding:12px 18px;background:#a02e6d;color:#fff;font-weight:600;display:flex;align-items:center;gap:8px"><i class="ti ti-user-plus"></i>Check in walk-in</div>
+    </div>
+    <div class="r" style="padding:22px">
+      <div style="font-size:24px;font-weight:600">Good morning, Aini</div>
+      <div style="color:#6b4a5c;margin:4px 0 18px">Shown in order of check-in. Staff decide who is called.</div>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px">
+        <div class="r tile"><span class="ic" style="background:#fde0ec;color:#7a1f52"><i class="ti ti-hourglass"></i></span><span style="color:#6b4a5c">Waiting</span><b>6</b></div>
+        <div class="r tile"><span class="ic" style="background:#e6e0f5;color:#3a2a6b"><i class="ti ti-door"></i></span><span style="color:#6b4a5c">In room</span><b>2</b></div>
+        <div class="r tile"><span class="ic" style="background:#fde0ec;color:#7a1f52"><i class="ti ti-circle-check"></i></span><span style="color:#6b4a5c">Completed</span><b>9</b></div>
+        <div class="r tile"><span class="ic" style="background:#e6e0f5;color:#3a2a6b"><i class="ti ti-walk"></i></span><span style="color:#6b4a5c">Walk-ins</span><b>4</b></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:22px">
+      <div class="r" style="padding:22px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:18px;font-weight:600">Today's queue</span><span style="color:#6b4a5c">Updated 09:42 am</span></div>
+        <div class="i" style="display:inline-flex;gap:2px;padding:4px;margin-bottom:16px"><span class="tab on">All 17</span><span class="tab">Waiting 6</span><span class="tab">Called 1</span><span class="tab">In room 2</span><span class="tab">Done 9</span></div>
+        <div class="r q"><b style="font-size:20px;font-weight:600">A001</b><span>Siti (demo)</span><span class="chip" style="background:#fde0ec;color:#7a1f52"><i class="ti ti-hourglass"></i>Waiting</span><span style="color:#6b4a5c">Not set</span><span class="btn">Call</span></div>
+        <div class="r q"><b style="font-size:20px;font-weight:600">A002</b><span>Dewi (demo)</span><span class="chip" style="background:#e6e0f5;color:#3a2a6b"><i class="ti ti-door"></i>In room</span><span style="color:#6b4a5c">Bilik 2</span><span class="btn">Complete</span></div>
+        <div class="r q"><b style="font-size:20px;font-weight:600">W001</b><span>Nurul (walk-in)</span><span class="chip" style="background:#fde0ec;color:#7a1f52"><i class="ti ti-hourglass"></i>Waiting</span><span style="color:#6b4a5c">Not set</span><span class="btn">Call</span></div>
+        <div class="r q"><b style="font-size:20px;font-weight:600">W002</b><span>Hana (walk-in)</span><span class="chip" style="background:#fde0ec;color:#7a1f52"><i class="ti ti-hourglass"></i>Waiting</span><span style="color:#6b4a5c">Not set</span><span class="btn">Call</span></div>
+      </div>
+      <div style="display:grid;gap:22px;align-content:start">
+        <div class="r" style="padding:20px">
+          <div style="font-size:16px;font-weight:600;margin-bottom:12px">Quick actions</div>
+          <div class="i" style="display:flex;align-items:center;gap:10px;padding:12px 14px;margin-bottom:10px"><i class="ti ti-user-plus" style="color:#a02e6d;font-size:19px"></i>Check in walk-in</div>
+          <div class="i" style="display:flex;align-items:center;gap:10px;padding:12px 14px;margin-bottom:10px"><i class="ti ti-key" style="color:#a02e6d;font-size:19px"></i>Issue activation code</div>
+          <div class="i" style="display:flex;align-items:center;gap:10px;padding:12px 14px"><i class="ti ti-search" style="color:#a02e6d;font-size:19px"></i>Find a patient</div>
+        </div>
+        <div class="r" style="padding:20px">
+          <div style="font-size:16px;font-weight:600;margin-bottom:10px">Rooms</div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0"><span>Bilik 1</span><span class="chip" style="background:#fde0ec;color:#7a1f52">Free</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0"><span>Bilik 2</span><span class="chip" style="background:#e6e0f5;color:#3a2a6b">In use</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0"><span>Bilik 3</span><span class="chip" style="background:#fde0ec;color:#7a1f52">Free</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></body></html>
