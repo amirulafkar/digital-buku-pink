@@ -161,7 +161,11 @@ public class QueueService(AppDbContext db, QueueRepository queue, PatientReposit
         var q = (await queue.ListForPatientAsync(clinicId, patientId.Value, date)).FirstOrDefault();
         if (q is null) return new { queueNo = (string?)null };
         var updated = new[] { q.CheckedInAt, q.CalledAt, q.StartedAt, q.CompletedAt }.Where(x => x != null).Max();
-        return new { queueNo = q.QueueNo, status = q.Status, updatedAt = updated };
+        // The room is shown only while called or in room, and only the staff-set value for this mother's own entry.
+        string? roomName = null;
+        if (q.RoomId is { } rid && (q.Status == QueueStatus.Called || q.Status == QueueStatus.InRoom))
+            roomName = await db.Rooms.AsNoTracking().Where(r => r.Id == rid && r.ClinicId == clinicId).Select(r => r.Name).FirstOrDefaultAsync();
+        return new { queueNo = q.QueueNo, status = q.Status, updatedAt = updated, roomName };
     }
 
     // ---------- staff queue ----------

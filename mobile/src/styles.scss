@@ -1,0 +1,105 @@
+@use '@fontsource-variable/geist';
+@use '@fontsource-variable/outfit';
+@use '@phosphor-icons/web/regular/style.css';
+@use '@ionic/angular/css/core.css';
+
+// ---- Design tokens: "Blush paper", neumorphic (soft UI), shared with the staff web app. ----
+:root {
+  --font-ui: 'Geist Variable', system-ui, sans-serif;
+  --font-head: 'Outfit Variable', 'Geist Variable', system-ui, sans-serif;
+  --r-1: 8px; --r-2: 12px; --r-3: 16px; --r-pill: 999px;
+  --dur: 140ms; --dur-long: 280ms; --ease: cubic-bezier(.2, .7, .2, 1);
+
+  color-scheme: light;
+  --bg: #fdf3f6;
+  --surface-2: #f9e6ee;
+  --line: #f3d6e0;
+  --edge: #9c7b8e;          // 3:1 border for controls
+  --text: #2a1230;
+  --muted: #6b4a5c;
+  --accent: #a02e6d;
+  --on-accent: #ffffff;
+  --accent-soft: #fde0ec;
+  --accent-ink: #7a1f52;
+  --lav-soft: #e6e0f5;
+  --lav-ink: #3a2a6b;
+  --danger: #b3261d;
+  --danger-soft: #fbdcd8;
+  --danger-ink: #7d1a13;
+  --warn-soft: #f6e7c8;
+  --warn-ink: #5a3d00;
+
+  --neu-hi: rgba(255, 255, 255, .9);
+  --neu-lo: rgba(160, 46, 109, .16);
+  --neu-raised: -6px -6px 12px var(--neu-hi), 6px 6px 14px var(--neu-lo);
+  --neu-raised-sm: -3px -3px 7px var(--neu-hi), 3px 3px 8px var(--neu-lo);
+  --neu-inset: inset 3px 3px 7px var(--neu-lo), inset -3px -3px 7px var(--neu-hi);
+  --neu-pressed: inset 2px 2px 5px rgba(160, 46, 109, .24), inset -2px -2px 5px rgba(255, 255, 255, .8);
+
+  --ion-background-color: var(--bg);
+  --ion-text-color: var(--text);
+  --ion-font-family: var(--font-ui);
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #2a1a24;
+  --surface-2: #34212d;
+  --line: #4a3140;
+  --edge: #a98799;
+  --text: #f7e9f0;
+  --muted: #d0b3c2;
+  --accent: #f48fb1;
+  --on-accent: #2a1230;
+  --accent-soft: #4d2a3d;
+  --accent-ink: #fdd3e3;
+  --lav-soft: #3b3358;
+  --lav-ink: #ddd5f7;
+  --danger: #f0a39b;
+  --danger-soft: #4a2321;
+  --danger-ink: #f9c9c4;
+  --warn-soft: #43361a;
+  --warn-ink: #f2dca4;
+  --neu-hi: rgba(120, 72, 102, .38);
+  --neu-lo: rgba(12, 4, 9, .6);
+  --neu-pressed: inset 2px 2px 5px rgba(12, 4, 9, .65), inset -2px -2px 5px rgba(120, 72, 102, .32);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-ui); font-size: 100%; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { font-family: var(--font-head); font-weight: 600; margin: 0; }
+p { margin: 0; }
+a { color: var(--accent-ink); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ph { line-height: 1; vertical-align: -0.15em; }
+
+h1[tabindex='-1']:focus:not(:focus-visible) { outline: none; }
+// Strong visible focus on everything.
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: var(--r-1); }
+
+// Shared controls. 44px minimum targets, a 1px 3:1 border plus shadow (never shadow alone).
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 48px; min-width: 44px; padding: 0 1.1rem; font: inherit; font-weight: 700; cursor: pointer;
+  color: var(--accent-ink); background: var(--bg); border: 1px solid var(--edge); border-radius: var(--r-2); box-shadow: var(--neu-raised-sm); text-decoration: none; max-width: 100%;
+  transition: box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease); }
+.btn:active:not(:disabled) { box-shadow: var(--neu-pressed); transform: translateY(1px); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.block { width: 100%; }
+.btn:disabled, .btn[aria-disabled='true'] { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); box-shadow: none; cursor: not-allowed; }
+.btn i { font-size: 1.3rem; }
+
+.card { padding: 1.1rem; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); box-shadow: var(--neu-raised); min-width: 0; }
+.field { display: grid; gap: .35rem; }
+.field label { font-weight: 600; }
+.field input { min-height: 48px; width: 100%; padding: 0 .9rem; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--edge); border-radius: var(--r-2); box-shadow: var(--neu-inset); }
+.field input::placeholder { color: var(--muted); opacity: 1; }
+.field input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.msg { display: flex; gap: .5rem; align-items: flex-start; padding: .75rem .9rem; border-radius: var(--r-2); border: 1px solid var(--line); background: var(--bg); box-shadow: var(--neu-inset); }
+.msg.bad { background: var(--danger-soft); color: var(--danger-ink); border-color: var(--danger); box-shadow: none; font-weight: 600; }
+.msg i { font-size: 1.25rem; margin-top: .1rem; }
+.page { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; align-content: start; min-width: 0; }
+.page > h1 { font-size: 1.6rem; }
+.muted { color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+}

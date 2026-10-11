@@ -25,6 +25,7 @@ builder.Services.AddScoped<RoomRepository>();
 builder.Services.AddScoped<QueueRepository>();
 builder.Services.AddScoped<QueueService>();
 builder.Services.AddScoped<StaffService>();
+builder.Services.AddScoped<PatientService>();
 builder.Services.AddOpenApi();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
@@ -95,6 +96,13 @@ if (args.Contains("seed"))
 }
 
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
+// Responses carry personal or session data: never let a browser, app or proxy cache them.
+app.Use(async (ctx, next) =>
+{
+    if (ctx.Request.Path.StartsWithSegments("/api"))
+        ctx.Response.OnStarting(() => { ctx.Response.Headers.CacheControl = "no-store"; ctx.Response.Headers.Pragma = "no-cache"; return Task.CompletedTask; });
+    await next();
+});
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter(); // after auth so per-user policies can read the token
@@ -157,6 +165,8 @@ staff.MapGet("/audit", async (DateTimeOffset? from, DateTimeOffset? to, int? lim
 var api = app.MapGroup("/api/v1").RequireAuthorization("Patient");
 api.MapPost("/checkins", async (CheckInRequest r, ClaimsPrincipal u, QueueService q, HttpContext c) =>
     Send(await q.PatientCheckInAsync(ClinicOf(u), UserOf(u), r.Token, r.IdempotencyKey, IpOf(c)))).RequireRateLimiting("checkin");
+api.MapGet("/me", async (ClaimsPrincipal u, PatientService s) => await s.MeAsync(ClinicOf(u), UserOf(u)) is { } me ? Results.Ok(me) : Results.NotFound());
+api.MapGet("/appointments/next", async (ClaimsPrincipal u, PatientService s) => Results.Ok(await s.NextAppointmentAsync(ClinicOf(u), UserOf(u))));
 api.MapGet("/queue/me", async (ClaimsPrincipal u, QueueService q) => Results.Ok(await q.MineAsync(ClinicOf(u), UserOf(u))));
 
 static Guid ClinicOf(ClaimsPrincipal u) => Guid.Parse(u.FindFirstValue("clinic_id")!);

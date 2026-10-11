@@ -1,0 +1,42 @@
+import { EN, MS, MS_REVIEWED, MS_REVIEW_STATUS, msUnreviewed } from './i18n';
+
+describe('mobile i18n catalogue', () => {
+  it('has every key in both languages', () => {
+    expect(Object.keys(MS).sort()).toEqual(Object.keys(EN).sort());
+  });
+
+  it('marks Bahasa Malaysia as needing native review', () => {
+    expect(MS_REVIEW_STATUS).toBe('needs-native-review');
+  });
+
+  it('tracks native review per key and lists the open ones', () => {
+    const open = msUnreviewed();
+    expect(open.length + MS_REVIEWED.size).toBe(Object.keys(MS).length);
+    for (const k of MS_REVIEWED) expect(k in MS, k).toBe(true);
+    console.info(`BM keys still needing native review: ${open.length} of ${Object.keys(MS).length}`);
+  });
+
+  it('flags every BM string as needing native review while MS_REVIEWED is empty', () => {
+    if (MS_REVIEWED.size === 0) expect(msUnreviewed().length).toBe(Object.keys(MS).length);
+  });
+
+  it('has no empty strings, no em dashes and no waiting-time wording', () => {
+    for (const [k, v] of [...Object.entries(EN), ...Object.entries(MS)]) {
+      expect(v.trim().length, k).toBeGreaterThan(0);
+      expect(v, k).not.toContain('—');
+      // status.order is the one sentence that says the app does NOT estimate waiting time.
+      if (k !== 'status.order') expect(v, k).not.toMatch(/estimat|wait(ing)?\s*time|anggaran|masa\s+menunggu|priorit|urgent|keutamaan/i);
+    }
+  });
+
+  it('uses the same placeholders in both languages', () => {
+    const ph = (s: string) => (s.match(/\{\w+\}/g) ?? []).sort().join(',');
+    for (const k of Object.keys(EN) as (keyof typeof EN)[]) expect(ph(MS[k]), k).toBe(ph(EN[k]));
+  });
+
+  it('keeps the camera-denied and privacy copy to 30 words or fewer in both languages', () => {
+    for (const k of ['scan.denied', 'settings.privacy.text'] as const) {
+      for (const [lang, cat] of [['en', EN], ['ms', MS]] as const) expect(cat[k].trim().split(/\s+/).length, `${lang} ${k}`).toBeLessThanOrEqual(30);
+    }
+  });
+});

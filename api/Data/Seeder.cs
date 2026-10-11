@@ -16,7 +16,7 @@ public static class Seeder
         var s1Done = await db.Clinics.AnyAsync(c => c.Code == ClinicCode);
         if (s1Done)
         {
-            var s2Added = await SeedS2Async(db);
+            var s2Added = await SeedS2Async(db, staffPassword);
             return new SeedResult([], !s2Added);
         }
 
@@ -69,18 +69,25 @@ public static class Seeder
             });
         }
         await db.SaveChangesAsync();
-        await SeedS2Async(db);
+        await SeedS2Async(db, staffPassword);
         return new SeedResult(codes, false);
     }
 
     /// <summary>S2 additions: a second clinic and Nadia (no appointment). No queue or QR rows.</summary>
-    private static async Task<bool> SeedS2Async(AppDbContext db)
+    private static async Task<bool> SeedS2Async(AppDbContext db, string staffPassword)
     {
         if (await db.Clinics.AnyAsync(c => c.Code == "KK-DEMO-2")) return false;
         var c2 = new Clinic { Code = "KK-DEMO-2", Name = "KK Demo Dua" };
         db.Clinics.Add(c2);
         await db.SaveChangesAsync();
         db.Patients.Add(new Patient { ClinicId = c2.Id, DisplayName = "Nadia (demo)", Phone = "0100000005", Language = "ms" });
+        // A nurse for the second clinic, so a mother from another clinic can be activated in demos and tests.
+        var rina = new Staff { ClinicId = c2.Id, DisplayName = "Rina (demo)", Role = Roles.Nurse };
+        db.Staff.Add(rina);
+        await db.SaveChangesAsync();
+        var acc = new UserAccount { StaffId = rina.Id, Username = "rina.demo", Status = AccountStatus.Active };
+        acc.PasswordHash = new PasswordHasher<UserAccount>().HashPassword(acc, staffPassword);
+        db.UserAccounts.Add(acc);
         await db.SaveChangesAsync();
         return true;
     }

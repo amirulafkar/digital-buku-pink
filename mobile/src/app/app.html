@@ -1,0 +1,33 @@
+<ion-app>
+  <a class="skip" href="#main">{{ i.t('app.skip') }}</a>
+  <header class="top">
+    <span class="brand"><i class="ph ph-heartbeat" aria-hidden="true"></i><span class="name">{{ i.t('app.name') }}</span></span>
+    <div class="tools">
+      <div class="lang" role="group" [attr.aria-label]="i.t('nav.language')">
+        <button type="button" [attr.aria-pressed]="i.lang() === 'en'" (click)="i.set('en')" lang="en">EN</button>
+        <button type="button" [attr.aria-pressed]="i.lang() === 'ms'" (click)="i.set('ms')" lang="ms">BM</button>
+      </div>
+      <button type="button" class="icon" (click)="theme.toggle()" [attr.aria-label]="isDark() ? i.t('nav.theme.light') : i.t('nav.theme.dark')">
+        <i class="ph" [class]="isDark() ? 'ph-sun' : 'ph-moon'" aria-hidden="true"></i>
+      </button>
+    </div>
+  </header>
+  <app-offline-banner />
+
+  <main id="main" tabindex="0" [attr.aria-label]="i.t('app.name')">
+    <div class="wrap">
+      @if (auth.signedIn()) { <app-safety-notice /> }
+      <router-outlet />
+      <div class="notices"><app-moh-notice /></div>
+    </div>
+  </main>
+
+  @if (auth.signedIn()) {
+    <nav class="tabs" [attr.aria-label]="i.t('nav.label')">
+      <a routerLink="/home" routerLinkActive="on" ariaCurrentWhenActive="page"><i class="ph ph-house" aria-hidden="true"></i><span>{{ i.t('nav.home') }}</span></a>
+      <a routerLink="/scan" routerLinkActive="on" ariaCurrentWhenActive="page"><i class="ph ph-qr-code" aria-hidden="true"></i><span>{{ i.t('nav.scan') }}</span></a>
+      <a routerLink="/status" routerLinkActive="on" ariaCurrentWhenActive="page"><i class="ph ph-list-checks" aria-hidden="true"></i><span>{{ i.t('nav.status') }}</span></a>
+      <a routerLink="/settings" routerLinkActive="on" ariaCurrentWhenActive="page"><i class="ph ph-gear" aria-hidden="true"></i><span>{{ i.t('nav.settings') }}</span></a>
+    </nav>
+  }
+</ion-app>
