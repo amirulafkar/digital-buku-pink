@@ -32,6 +32,19 @@ export class Auth {
   private refreshing: Promise<boolean> | null = null;
 
   get token(): string | null { return this.access(); }
+  /** Hooks that run before tokens are cleared on logout (the live connection stops first). */
+  readonly beforeLogout: (() => void)[] = [];
+
+  /** Refreshes the access token when it is within a minute of expiry (used before a live reconnect). */
+  async ensureFresh(): Promise<void> {
+    const t = this.access();
+    if (!t) return;
+    try {
+      const exp = JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).exp * 1000;
+      if (exp - Date.now() < 60_000) await this.refresh();
+    } catch { /* an unreadable token is replaced on the next 401 */ }
+  }
+
 
   private apply(r: TokenResponse): void {
     this.access.set(r.accessToken);
@@ -77,6 +90,7 @@ export class Auth {
   }
 
   async logout(expired = false): Promise<void> {
+    this.beforeLogout.forEach(f => f()); // stop live updates before the tokens go
     const rt = this.store.get();
     this.store.set(null);
     this.access.set(null);

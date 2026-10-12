@@ -127,6 +127,7 @@ test('S4-A5 a lost response is retried with the same key: one queue number, one 
 
 test('S4-A6 status shows the steps, the room when called, missed copy, and keeps the last status offline', async ({ page }) => {
   await ensureMother(MOTHERS.siti);
+  await page.route('**/hubs/**', r => r.abort()); // the live hub is covered in live.spec.ts; here polling must notice the failure
   await loginUI(page, MOTHERS.siti.phone);
   await checkInUI(page);
   await page.getByTestId('open-status').click();
@@ -151,7 +152,7 @@ test('S4-A6 status shows the steps, the room when called, missed copy, and keeps
 
   // Offline: the poll fails, the last status stays, the banner shows and scanning is disabled.
   await page.route('**/api/v1/queue/me', r => r.abort());
-  await expect(page.getByText('You are offline or the server cannot be reached.')).toBeVisible({ timeout: 25_000 });
+  await expect(page.getByText('You are offline. Showing the last known status. Go to the counter if you need help.')).toBeVisible({ timeout: 25_000 });
   await expect(page.getByTestId('updated')).toContainText('Last updated');
   await expect(page.getByTestId('queue-no')).toHaveText(sitiRow.queueNo);
   await page.unroute('**/api/v1/queue/me');

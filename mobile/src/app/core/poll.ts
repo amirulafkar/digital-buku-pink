@@ -27,7 +27,7 @@ export class Poller {
   private onVisibility = () => {
     if (!this.running) return;
     if (document.hidden) this.clear();
-    else void this.tick();
+    else void this.tick(true);
   };
 
   constructor(
@@ -35,13 +35,15 @@ export class Poller {
     private conn: Connectivity,
     private okMs = 5000,
     private errorMs = 15000,
+    /** While this returns true (live updates are connected) the timer does not poll; explicit refreshes still run. */
+    private skip: () => boolean = () => false,
   ) {}
 
   start(): void {
     if (this.running) return;
     this.running = true;
     document.addEventListener('visibilitychange', this.onVisibility);
-    void this.tick();
+    void this.tick(true); // the first load never waits for the live connection
   }
 
   stop(): void {
@@ -51,13 +53,14 @@ export class Poller {
   }
 
   /** Immediate reload (for example after a write). */
-  async refreshNow(): Promise<void> { this.clear(); await this.tick(); }
+  async refreshNow(): Promise<void> { this.clear(); await this.tick(true); }
 
   private clear(): void { if (this.timer) { clearTimeout(this.timer); this.timer = null; } }
 
-  private async tick(): Promise<void> {
+  private async tick(force = false): Promise<void> {
     this.clear();
     if (!this.running || document.hidden) return;
+    if (!force && this.skip()) { this.timer = setTimeout(() => void this.tick(), this.okMs); return; }
     try {
       await this.load();
       this.failed = false;

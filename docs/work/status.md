@@ -20,3 +20,7 @@ Monthly hosting cost cap: (fill in)
 - 2026-10-11: S4 started. Pending human approval before pilot: FR-12 safety notice exact wording (placeholder used), Malay native review.
 - 2026-10-11 (resume point): S4 built in mobile/ (uncommitted). UX score 8.6 after round 2; round-2 fixes sent to tech-lead (offline button, form-level errors, theme label, tab bar at 200% text, axe moderate + error states, error screenshots, settings wording, non-tappable status steps). Next: confirm fixes, re-run API/mobile/web tests, UX round 3 (final), architect check vs brief-S4.md, commit S4. FR-10 notifications skipped by design. Then S5.
 - 2026-10-11: S4 committed. FR-10 notifications skipped by design (cut order); FR-12 wording is a PLACEHOLDER needing human/MOH approval before any pilot; mobile tokens in memory only (reload requires login); native build and secure storage deferred; mobile/screenshots are git-ignored and come from the dev build.
+
+## S5 licence check (2026-10-11)
+`@microsoft/signalr` (web and mobile) and `Microsoft.AspNetCore.SignalR.Client` (API tests): MIT (package.json `"license": "MIT"`, source dotnet/aspnetcore). Installed.
+- 2026-10-11 (PAUSED by user during S5): S5 brief written (docs/work/brief-S5.md, decisions appended). tech-lead had started implementing and was stopped mid-work: S5 code in api/, web/, mobile/ is UNCOMMITTED and possibly incomplete. On resume: check git status, re-run all suites (API, web unit+e2e, mobile unit+e2e, check:prod), finish S5, then UX/privacy/architect reviews and commit. Open: native BM reviewer name and date.

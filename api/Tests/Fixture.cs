@@ -23,6 +23,7 @@ public class DbFixture : IAsyncLifetime
     public const string TestDb = "dbp_test";
     public string OwnerConn = "", AppConn = "", AdminConn = "";
     public string StaffPassword = "Seed-" + Guid.NewGuid().ToString("N");
+    public string JwtKey = "test-signing-key-" + Guid.NewGuid().ToString("N");
     public string Pepper = "pepper-" + Guid.NewGuid().ToString("N");
     public const string TestIp = "203.0.113.9"; // documentation range
     public Guid ClinicA, ClinicB;
@@ -67,7 +68,8 @@ public class DbFixture : IAsyncLifetime
         Environment.SetEnvironmentVariable("Auth__CheckinPerMinute", "100000");
         Environment.SetEnvironmentVariable("Auth__QrPerMinute", "100000");
         Environment.SetEnvironmentVariable("Auth__SearchPerMinute", "100000");
-        Environment.SetEnvironmentVariable("Auth__Key", "test-signing-key-" + Guid.NewGuid().ToString("N"));
+        Environment.SetEnvironmentVariable("Auth__HubPerMinute", "100000");
+        Environment.SetEnvironmentVariable("Auth__Key", JwtKey);
         Factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
             b.ConfigureTestServices(s => s.AddTransient<IStartupFilter, FakeIpFilter>()));
     }

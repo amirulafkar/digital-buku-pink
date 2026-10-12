@@ -93,3 +93,8 @@ h1 { margin: 0; font-family: var(--font-head); font-size: 1.75rem; letter-spacin
   .tabs { flex-wrap: nowrap; overflow-x: auto; gap: .1rem; padding: .25rem; scrollbar-width: thin; }
   .tabs button { padding: 0 .4rem; gap: .3rem; font-size: .9375rem; flex: 0 0 auto; white-space: nowrap; }
 }
+
+.stamps { display: grid; gap: .4rem; justify-items: end; }
+.livestate { margin: 0; display: inline-flex; gap: .4rem; align-items: center; font-size: .875rem; font-weight: 700; padding: .3rem .8rem; border-radius: var(--r-pill); border: 1px solid var(--edge); box-shadow: var(--neu-raised-sm); }
+.livestate[data-state=off] { color: var(--warn-ink); background: var(--warn-soft); box-shadow: none; }
+.livestate i { font-size: 1.1rem; }

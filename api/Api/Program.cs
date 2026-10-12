@@ -26,6 +26,15 @@ builder.Services.AddScoped<QueueRepository>();
 builder.Services.AddScoped<QueueService>();
 builder.Services.AddScoped<StaffService>();
 builder.Services.AddScoped<PatientService>();
+builder.Services.AddScoped<QueueEvents>();
+builder.Services.AddSingleton<HubConnectionLimiter>();
+builder.Services.AddSignalR(o =>
+{
+    o.MaximumReceiveMessageSize = 1024;            // the hub takes no client messages
+    o.KeepAliveInterval = TimeSpan.FromSeconds(15);
+    o.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
+    o.EnableDetailedErrors = false;
+});
 builder.Services.AddOpenApi();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
@@ -34,6 +43,17 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
     {
         var a = auth.Value;
         o.MapInboundClaims = false;
+        // WebSockets cannot set headers: for the hub path only, accept the access token from the query string.
+        // Request URLs are never logged (Microsoft.AspNetCore logging is Warning), so the token stays out of logs.
+        o.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                var t = ctx.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(t) && ctx.HttpContext.Request.Path.StartsWithSegments("/hubs")) ctx.Token = t;
+                return Task.CompletedTask;
+            },
+        };
         o.TokenValidationParameters = new TokenValidationParameters
         {
             ValidIssuer = a.Issuer,
@@ -47,6 +67,12 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
 builder.Services.AddRateLimiter(o =>
 {
     o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.AddPolicy("hub", ctx =>
+    {
+        var limit = ctx.RequestServices.GetRequiredService<IOptions<AuthOptions>>().Value.HubPerMinute;
+        return RateLimitPartition.GetFixedWindowLimiter("hub:" + (ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown"),
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = limit, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 });
+    });
     o.AddPolicy("auth", ctx =>
     {
         var limit = ctx.RequestServices.GetRequiredService<IOptions<AuthOptions>>().Value.RateLimitPerMinute;
@@ -107,6 +133,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter(); // after auth so per-user policies can read the token
 app.MapGet("/health", () => Results.Ok());
+app.MapHub<QueueHub>("/hubs/queue").RequireAuthorization().RequireRateLimiting("hub");
 
 var auth = app.MapGroup("/api/v1/auth").RequireRateLimiting("auth"); // CORS/HSTS: confirm at the reverse proxy later
 auth.MapPost("/login", async (LoginRequest r, AuthService s, HttpContext c) =>

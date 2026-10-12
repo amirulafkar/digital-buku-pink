@@ -39,4 +39,14 @@ describe('mobile i18n catalogue', () => {
       for (const [lang, cat] of [['en', EN], ['ms', MS]] as const) expect(cat[k].trim().split(/\s+/).length, `${lang} ${k}`).toBeLessThanOrEqual(30);
     }
   });
+
+  it('has a Bahasa Malaysia string for every English key and lists any that are missing (NFR-08)', () => {
+    const missing = Object.keys(EN).filter(k => !(k in MS) || !String((MS as Record<string, string>)[k]).trim());
+    expect(missing, `Missing MS keys: ${missing.join(', ')}`).toEqual([]);
+  });
+
+  it('keeps MS_REVIEWED empty until a native reviewer signs off, so every key is still flagged', () => {
+    expect(MS_REVIEWED.size).toBe(0);
+    expect(msUnreviewed().length).toBe(Object.keys(EN).length);
+  });
 });

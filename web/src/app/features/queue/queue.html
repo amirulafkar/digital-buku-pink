@@ -13,7 +13,10 @@
           <h1 id="queue-h">{{ i.t('queue.title') }}</h1>
           <p class="sub">{{ i.t('queue.order') }}</p>
         </div>
-        @if (updated(); as u) { <p class="stamp">{{ i.t('queue.updated', { time: i.time(u) }) }}</p> }
+        <div class="stamps">
+      <p class="livestate" role="status" aria-live="polite" data-testid="live-state" [attr.data-state]="live.state()"><i class="ph" [class]="live.state() === 'live' ? 'ph-broadcast' : live.state() === 'reconnecting' ? 'ph-arrows-clockwise' : 'ph-wifi-slash'" aria-hidden="true"></i>{{ i.t(live.state() === 'live' ? 'live.on' : live.state() === 'reconnecting' ? 'live.reconnecting' : 'live.off') }}</p>
+      @if (updated(); as u) { <p class="stamp">{{ i.t('queue.updated', { time: i.time(u) }) }}</p> }
+    </div>
       </header>
 
       @if (isAdmin()) { <p class="readonly" role="note"><i class="ph ph-eye" aria-hidden="true"></i>{{ i.t('queue.readonly') }}</p> }

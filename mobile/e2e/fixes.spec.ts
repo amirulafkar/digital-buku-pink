@@ -25,6 +25,7 @@ test('home offline: the check-in control is a focusable button that announces it
 
 test('status first-load failure says there is no status yet and offers a retry that works', async ({ page }) => {
   await ensureMother(MOTHERS.siti);
+  await page.route('**/hubs/**', r => r.abort()); // a failing status call with the hub down: polling is what notices
   await loginUI(page, MOTHERS.siti.phone);
   await checkInUI(page);
   await page.route('**/api/v1/queue/me', r => r.abort());

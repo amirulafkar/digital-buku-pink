@@ -1,8 +1,9 @@
 import { PageHeading } from '../../shared/page-heading';
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Api, MyQueue } from '../../core/api';
 import { I18n } from '../../core/i18n';
+import { Live } from '../../core/live';
 import { Connectivity, Poller } from '../../core/poll';
 import { Skeleton } from '../../shared/states';
 
@@ -16,6 +17,8 @@ const ICON: Record<string, string> = { waiting: 'ph-user-circle', called: 'ph-me
   template: `
     <section class="page" aria-labelledby="h">
       <h1 id="h" pageHeading>{{ i.t('status.title') }}</h1>
+      <p class="livestate" role="status" aria-live="polite" data-testid="live-state" [attr.data-state]="live.state()"><i class="ph" [class]="live.state() === 'live' ? 'ph-broadcast' : live.state() === 'reconnecting' ? 'ph-arrows-clockwise' : 'ph-wifi-slash'" aria-hidden="true"></i>{{ i.t(live.state() === 'live' ? 'live.on' : live.state() === 'reconnecting' ? 'live.reconnecting' : 'live.off') }}</p>
+      <p class="sr" role="status" aria-live="polite" data-testid="announce">{{ announcement() }}</p>
       @if (!loaded()) { <app-skeleton /> }
       @else if (data() && !data()!.queueNo) {
         <p class="msg" role="status"><i class="ph ph-info" aria-hidden="true"></i>{{ i.t('status.none') }}</p>
@@ -64,6 +67,9 @@ const ICON: Record<string, string> = { waiting: 'ph-user-circle', called: 'ph-me
     .steps li[data-state=current] { color: var(--accent-ink); background: var(--accent-soft); border-left-color: var(--accent); font-weight: 700; }
     .now { margin-left: auto; font-size: .875rem; padding: .05rem .6rem; border-radius: var(--r-pill); border: 1px solid var(--accent); background: var(--bg); color: var(--accent-ink); }
     .small { font-size: .875rem; }
+    .livestate { display: inline-flex; gap: .4rem; align-items: center; justify-self: start; font-size: .875rem; font-weight: 700; padding: .3rem .8rem; border-radius: var(--r-pill); border: 1px solid var(--edge); background: var(--bg); box-shadow: var(--neu-raised-sm); }
+    .livestate[data-state=off] { color: var(--warn-ink); background: var(--warn-soft); box-shadow: none; }
+    .livestate i { font-size: 1.1rem; }
   `],
 })
 export class Status implements OnInit, OnDestroy {
@@ -76,13 +82,27 @@ export class Status implements OnInit, OnDestroy {
   failed = signal(false);
   updated = signal<string | null>(null);
   known = computed(() => STEPS.includes(this.data()?.status as (typeof STEPS)[number]));
-  private poller = new Poller(() => this.load(), this.conn, 15000, 60000);
+  live = inject(Live);
+  /** Polling pauses while the live connection is up and takes over when it is not. */
+  private poller = new Poller(() => this.load(), this.conn, 15000, 60000, () => this.live.state() === 'live');
+  private started = false;
+  /** One polite announcement, only when the mother's own status actually changes. */
+  announcement = signal('');
+  private lastStatus: string | null = null;
 
-  ngOnInit(): void { this.poller.start(); }
+  constructor() {
+    effect(() => {
+      this.live.tick();
+      untracked(() => { if (this.started) void this.poller.refreshNow(); });
+    });
+  }
+
+  ngOnInit(): void { this.started = true; this.poller.start(); }
   ngOnDestroy(): void { this.poller.stop(); }
   refresh(): void { void this.poller.refreshNow(); }
 
   icon(s: string): string { return ICON[s]; }
+  statusLabel(s: string): string { return s === 'missed' ? this.i.t('status.missed') : this.i.tk('status.step', s, 'status.unknown'); }
   stateOf(s: string): 'done' | 'current' | 'todo' {
     const cur = STEPS.indexOf(this.data()?.status as (typeof STEPS)[number]);
     const idx = STEPS.indexOf(s as (typeof STEPS)[number]);
@@ -91,7 +111,10 @@ export class Status implements OnInit, OnDestroy {
 
   private async load(): Promise<void> {
     try {
-      this.data.set(await this.api.queueMe());
+      const next = await this.api.queueMe();
+      if (this.lastStatus !== null && next.status && next.status !== this.lastStatus) this.announcement.set(this.i.t('status.announce', { status: this.statusLabel(next.status) }));
+      this.lastStatus = next.status ?? null;
+      this.data.set(next);
       this.failed.set(false);
       this.loaded.set(true);
       this.updated.set(new Date().toISOString());

@@ -22,7 +22,7 @@ public record CheckInRequest(string? Token, string? IdempotencyKey);
 /// Queue logic. Staff always control the queue: nothing here reorders, sets urgency, assigns, or runs on a timer.
 /// Audit detail holds ids and codes only: never a name, phone or token value.
 /// </summary>
-public class QueueService(AppDbContext db, QueueRepository queue, PatientRepository patients)
+public class QueueService(AppDbContext db, QueueRepository queue, PatientRepository patients, QueueEvents events)
 {
     public const int QrLifeSeconds = 60;
     static readonly string[] ReasonCodes = ["no_answer", "left_clinic", "other"];
@@ -148,6 +148,7 @@ public class QueueService(AppDbContext db, QueueRepository queue, PatientReposit
         Audit.Add(db, userId, clinicId, "checkin", "queue_entry", entry.Id, ip, new { source, queueNo = entry.QueueNo, appointmentId = appt?.Id });
         await db.SaveChangesAsync();
         await tx.CommitAsync();
+        await events.PublishAsync(clinicId, patientId, entry.Id); // after commit, next to the audit write
         return new(Dto(entry), 201);
     }
 
@@ -249,6 +250,7 @@ public class QueueService(AppDbContext db, QueueRepository queue, PatientReposit
         }
         await db.SaveChangesAsync();
         await tx.CommitAsync();
+        await events.PublishAsync(clinicId, e.PatientId, e.Id);
         return new(new { id = e.Id, queueNo = e.QueueNo, status = e.Status, roomId = e.RoomId, staffId = e.StaffId, urgent = e.Urgent, urgentReason = e.UrgentReason, checkedInAt = e.CheckedInAt });
     }
 

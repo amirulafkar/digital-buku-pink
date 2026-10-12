@@ -7,6 +7,7 @@ import { Api, Nurse, PatchBody, QueueEntry, Room, Status } from '../../core/api'
 import { Auth } from '../../core/auth';
 import { I18n } from '../../core/i18n';
 import { Events } from '../../core/events';
+import { Live } from '../../core/live';
 import { Connectivity, Poller } from '../../core/poll';
 import { EmptyState, ErrorState, Skeleton } from '../../shared/states';
 import { StatusChip } from '../../shared/status-chip';
@@ -25,6 +26,7 @@ export class Queue implements OnInit, OnDestroy {
   private api = inject(Api);
   private dialog = inject(MatDialog);
   private events = inject(Events);
+  live = inject(Live);
 
   entries = signal<QueueEntry[]>([]);
   loaded = signal(false);
@@ -40,7 +42,8 @@ export class Queue implements OnInit, OnDestroy {
   canWrite = computed(() => this.auth.isNurse() && !this.conn.offline());
   isAdmin = computed(() => this.auth.isAdmin());
 
-  private poller = new Poller(() => this.load(), this.conn);
+  // Polling pauses while the live connection is up and takes over when it is not.
+  private poller = new Poller(() => this.load(), this.conn, 5000, 15000, () => this.live.state() === 'live');
   private started = false;
 
   // Filters: 'all', a status, or 'walkin'. Order is always the server's check-in order.
@@ -63,6 +66,10 @@ export class Queue implements OnInit, OnDestroy {
   constructor() {
     effect(() => {
       this.events.queueChanged();
+      untracked(() => { if (this.started) void this.poller.refreshNow(); });
+    });
+    effect(() => {
+      this.live.tick(); // a newer live event (or a reconnect) means: refetch once through the normal REST endpoint
       untracked(() => { if (this.started) void this.poller.refreshNow(); });
     });
   }

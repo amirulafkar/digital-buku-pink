@@ -229,15 +229,16 @@ test('S3-E8 clinic admin is read-only and cannot reach patients', async ({ page 
 
 test('S3-E9 offline banner and disabled writes, then recovery', async ({ page }) => {
   const name = `Tester Sembilan ${Date.now()}`;
+  await page.route('**/hubs/**', r => r.abort()); // API down means the live hub is down too; polling then detects it
   await login(page, 'aini.demo');
   await addWalkIn(page, name);
   await page.goto('/queue');
   await expect(row(page, name)).toBeVisible();
   await page.route('**/api/v1/staff/queue', r => r.abort());
-  await expect(page.getByText('You are offline or the server cannot be reached')).toBeVisible({ timeout: 12_000 });
+  await expect(page.getByText('System is down. Use the paper queue and re-key entries later.')).toBeVisible({ timeout: 12_000 });
   await expect(row(page, name).locator('[data-action=call]')).toBeDisabled();
   await page.unroute('**/api/v1/staff/queue');
-  await expect(page.getByText('You are offline or the server cannot be reached')).toBeHidden({ timeout: 25_000 });
+  await expect(page.getByText('System is down. Use the paper queue and re-key entries later.')).toBeHidden({ timeout: 25_000 });
   await expect(row(page, name).locator('[data-action=call]')).toBeEnabled();
 });
 

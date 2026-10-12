@@ -185,7 +185,7 @@ test('state: offline banner', async ({ browser }) => {
   const { ctx, page } = await statePage(browser);
   await page.locator('[data-testid=queue-list] > li').first().waitFor();
   await page.route('**/api/v1/staff/queue', r => r.abort());
-  await page.getByText('You are offline or the server cannot be reached').waitFor({ timeout: 12_000 });
+  await page.getByText('System is down. Use the paper queue and re-key entries later.').waitFor({ timeout: 12_000 });
   await page.waitForTimeout(300);
   await page.screenshot({ path: `${OUT}/63-offline.png` });
   await ctx.close();

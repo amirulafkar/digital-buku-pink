@@ -115,7 +115,11 @@ export const EN = {
   'settings.version': 'Prototype for demonstration',
 
   'state.loading': 'Loading',
-  'state.offline': 'You are offline or the server cannot be reached.',
+  'state.offline': 'You are offline. Showing the last known status. Go to the counter if you need help.',
+  'live.on': 'Live',
+  'live.reconnecting': 'Reconnecting...',
+  'live.off': 'Live updates are off. Refreshing every 15 seconds.',
+  'status.announce': 'Your status is now {status}.',
   'state.retry': 'Retry',
 } as const;
 
@@ -238,7 +242,11 @@ export const MS: Record<Key, string> = {
   'settings.version': 'Prototaip untuk demonstrasi',
 
   'state.loading': 'Memuatkan',
-  'state.offline': 'Anda di luar talian atau pelayan tidak dapat dicapai.',
+  'state.offline': 'Anda di luar talian. Memaparkan status terakhir yang diketahui. Pergi ke kaunter jika anda perlukan bantuan.',
+  'live.on': 'Langsung',
+  'live.reconnecting': 'Menyambung semula...',
+  'live.off': 'Kemas kini langsung dimatikan. Menyegarkan setiap 15 saat.',
+  'status.announce': 'Status anda kini {status}.',
   'state.retry': 'Cuba lagi',
 };
 

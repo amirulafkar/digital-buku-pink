@@ -32,4 +32,14 @@ describe('i18n catalogue', () => {
     const ph = (s: string) => (s.match(/\{\w+\}/g) ?? []).sort().join(',');
     for (const k of Object.keys(EN) as (keyof typeof EN)[]) expect(ph(MS[k]), k).toBe(ph(EN[k]));
   });
+
+  it('has a Bahasa Malaysia string for every English key and lists any that are missing (NFR-08)', () => {
+    const missing = Object.keys(EN).filter(k => !(k in MS) || !String((MS as Record<string, string>)[k]).trim());
+    expect(missing, `Missing MS keys: ${missing.join(', ')}`).toEqual([]);
+  });
+
+  it('keeps MS_REVIEWED empty until a native reviewer signs off, so every key is still flagged', () => {
+    expect(MS_REVIEWED.size).toBe(0);
+    expect(msUnreviewed().length).toBe(Object.keys(EN).length);
+  });
 });

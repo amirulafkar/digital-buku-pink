@@ -356,6 +356,7 @@ for (const theme of ['light', 'dark'] as const) {
     const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: theme });
     await ctx.addInitScript(t => localStorage.setItem('dbp.theme', t), theme);
     const page = await ctx.newPage();
+    await page.route('**/hubs/**', r => r.abort()); // this test is about API-down states, so the live hub is down too (polling runs)
     await login(page);
     await prepare(page);
     const QUEUE = '**/api/v1/staff/queue';
