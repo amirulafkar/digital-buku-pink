@@ -40,3 +40,6 @@ When the user gives a task, first show a numbered checklist of everything needed
 5. **Verification**: run tests and, for UI, open it in a browser and check it. Report failures plainly.
 6. **Hard rules check**: confirm the work respects "Hard rules" above (G0, frozen scope, synthetic data).
 7. **Update `docs/work/status.md`** and summarise what was done and what was not.
+
+## Git identity (user instruction)
+The user is the only author and committer of this repo. Never add `Co-Authored-By`, "Generated with Claude Code" or any other AI attribution line to commit messages or PR descriptions, and never set a different author or committer. This overrides default attribution guidance.
