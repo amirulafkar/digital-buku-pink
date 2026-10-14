@@ -2,7 +2,7 @@
 
 Gate G0: WAIVED. G0 waived: user instruction in chat on 2026-10-11, no reason given.
 Current phase: 0 (kits written: interview-guides.md, observation-sheet.md, g0-evidence.md)
-Current slice: S5 built, uncommitted, awaiting lead review (API 65/65, mobile unit 23, mobile e2e 77/77, web unit 22, web e2e 59/59; see docs/work/results-S5.md); S4 done (API 55/55, mobile unit 8/8, mobile e2e 63/63, web e2e 30/30; privacy-security no blockers; UX 9.2/10; architect gaps accepted); next: S5 (SignalR, offline states, BM, accessibility polish)
+Current slice: S5 done and committed 2026-10-14 (lead re-ran on fresh DB: API 65/65, mobile unit 23, mobile e2e 80/80, web unit 22, web e2e 61/61; privacy-security no blockers; UX 7/10 then fix round; architect gaps accepted; see docs/work/results-S5.md); next: S6 (tests, demo script, README, freeze). e2e must run from Git Bash on a freshly reset dev DB (`CONFIRM_RESET=yes db/seed/reset.sh`).
 Declared weekly hours target: (fill in)
 Monthly hosting cost cap: (fill in)
 
