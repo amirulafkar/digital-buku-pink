@@ -106,7 +106,7 @@ export class Codes implements OnInit {
   loaded = signal(false);
   failed = signal(false);
   error = signal<string | null>(null);
-  offline = computed(() => this.conn.offline());
+  offline = computed(() => !this.conn.canWrite());
 
   ngOnInit(): void { void this.load(); }
 

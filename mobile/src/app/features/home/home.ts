@@ -25,7 +25,7 @@ import { ErrorState, Skeleton } from '../../shared/states';
             <p class="kind">{{ i.tk('visit', next()!.type ?? '') }}</p>
           } @else { <p class="muted">{{ i.t('home.appt.none') }}</p> }
         </div>
-        @if (conn.offline()) {
+        @if (!conn.canWrite()) {
           <button type="button" class="btn block disabled" aria-disabled="true" aria-describedby="off-line" (click)="$event.preventDefault()" data-testid="home-checkin"><i class="ph ph-qr-code" aria-hidden="true"></i>{{ i.t('home.checkin') }}</button>
           <p id="off-line" class="msg" role="status"><i class="ph ph-wifi-slash" aria-hidden="true"></i>{{ i.t('scan.offline') }}</p>
         } @else {

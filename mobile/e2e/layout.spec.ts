@@ -66,7 +66,7 @@ test('with the on-screen keyboard open (short visible viewport) the focused fiel
   await ctx.close();
 });
 
-test('tab bar stays on one row with whole labels at 320px AND 200% text, in EN and BM', async ({ browser }) => {
+test('tab labels scale with 200% text (not clamped), wrap to at most two rows, and are never clipped or overlapping, at 320px and 375px, in EN and BM', async ({ browser }) => {
   await ensureMother(MOTHERS.siti);
   const out: Record<string, string> = {};
   for (const [name, vw] of [['320px 200%', 320], ['375px 200%', 375]] as const) {
@@ -80,11 +80,17 @@ test('tab bar stays on one row with whole labels at 320px AND 200% text, in EN a
         const tops = new Set(links.map(a => Math.round(a.getBoundingClientRect().top)));
         const clipped = links.filter(a => { const s = a.querySelector('span')!; return s.scrollWidth > a.clientWidth || s.getBoundingClientRect().right > a.getBoundingClientRect().right + 0.5 || s.getBoundingClientRect().left < a.getBoundingClientRect().left - 0.5; }).length;
         const de = document.documentElement;
-        return `rows=${tops.size} links=${links.length} clipped=${clipped} overflow=${de.scrollWidth - de.clientWidth}`;
+        const rects = links.map(a => a.getBoundingClientRect());
+        const overlap = rects.some((a, i) => rects.some((b, j) => j > i && a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5));
+        const px = parseFloat(getComputedStyle(links[0].querySelector('span')!).fontSize);
+        const label = px >= 27 ? 'scaled' : `clamped(${px}px)`; // .875rem at 200% is 28px
+        return `rows=${Math.min(tops.size, 2)} links=${links.length} clipped=${clipped} overlap=${overlap} overflow=${de.scrollWidth - de.clientWidth} label=${label} extraRows=${tops.size > 2}`;
       });
       await ctx.close();
     }
   }
-  const ok = 'rows=1 links=4 clipped=0 overflow=0';
-  expect(out).toEqual({ '320px 200% en': ok, '320px 200% ms': ok, '375px 200% en': ok, '375px 200% ms': ok });
+  for (const [k, v] of Object.entries(out)) {
+    expect(v, k).toMatch(/links=4 clipped=0 overlap=false overflow=0 label=scaled extraRows=false/);
+    expect(['1', '2'], k).toContain(v.match(/rows=(\d)/)![1]);
+  }
 });

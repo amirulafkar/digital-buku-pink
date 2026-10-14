@@ -68,7 +68,7 @@ export class Patients {
   busy = signal(false);
   done = signal<string | null>(null);
   error = signal<string | null>(null);
-  offline = computed(() => this.conn.offline());
+  offline = computed(() => !this.conn.canWrite());
 
   async onPick(p: SearchPick): Promise<void> {
     this.done.set(null);

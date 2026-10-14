@@ -22,7 +22,7 @@ public record CheckInRequest(string? Token, string? IdempotencyKey);
 /// Queue logic. Staff always control the queue: nothing here reorders, sets urgency, assigns, or runs on a timer.
 /// Audit detail holds ids and codes only: never a name, phone or token value.
 /// </summary>
-public class QueueService(AppDbContext db, QueueRepository queue, PatientRepository patients)
+public class QueueService(AppDbContext db, QueueRepository queue, PatientRepository patients, IQueueNotifier notifier, ILogger<QueueService> log)
 {
     public const int QrLifeSeconds = 60;
     static readonly string[] ReasonCodes = ["no_answer", "left_clinic", "other"];
@@ -148,7 +148,24 @@ public class QueueService(AppDbContext db, QueueRepository queue, PatientReposit
         Audit.Add(db, userId, clinicId, "checkin", "queue_entry", entry.Id, ip, new { source, queueNo = entry.QueueNo, appointmentId = appt?.Id });
         await db.SaveChangesAsync();
         await tx.CommitAsync();
+        await EmitAsync(clinicId, entry.PatientId, toPatient: true); // after commit; a replay (200) never reaches here
         return new(Dto(entry), 201);
+    }
+
+    /// <summary>
+    /// Live refresh signal (S5). Called only after the transaction has committed. A failure is logged and never changes the response:
+    /// the screens still catch up on their next poll. The signal carries no data (see QueueNotifier).
+    /// </summary>
+    private async Task EmitAsync(Guid clinicId, Guid? patientId, bool toPatient)
+    {
+        try
+        {
+            Guid? userId = null;
+            if (toPatient && patientId is { } pid)
+                userId = await db.UserAccounts.AsNoTracking().Where(a => a.PatientId == pid).Select(a => (Guid?)a.Id).FirstOrDefaultAsync();
+            await notifier.QueueChangedAsync(clinicId, userId);
+        }
+        catch (Exception ex) { log.LogWarning(ex, "QueueChanged emit failed"); }
     }
 
     private static CheckInDto Dto(QueueEntry q) => new(q.Id, q.QueueNo, q.Status, q.CheckedInAt);
@@ -225,9 +242,12 @@ public class QueueService(AppDbContext db, QueueRepository queue, PatientReposit
         if ((req.RoomId is not null || req.StaffId is not null || req.Urgent is not null) && terminal)
             return Outcome<object>.Fail(409, "invalid_transition", "Entry is closed.");
 
+        var anyChange = false;
+        var motherSees = false; // status or room change; staff-only changes (staff assignment, urgent flag) stay off her connection
         if (req.Status is { } to)
         {
             var from = e.Status;
+            anyChange = motherSees = true;
             e.Status = to;
             var now = DateTimeOffset.UtcNow;
             if (to == QueueStatus.Called) e.CalledAt = now;
@@ -237,18 +257,21 @@ public class QueueService(AppDbContext db, QueueRepository queue, PatientReposit
         }
         if (req.RoomId is not null || req.StaffId is not null)
         {
-            if (req.RoomId is not null) e.RoomId = req.RoomId;
+            anyChange = true;
+            if (req.RoomId is not null) { e.RoomId = req.RoomId; motherSees = true; }
             if (req.StaffId is not null) e.StaffId = req.StaffId;
             Audit.Add(db, userId, clinicId, "assign", "queue_entry", e.Id, ip, new { roomId = e.RoomId, staffId = e.StaffId });
         }
         if (req.Urgent is { } urgent && (urgent != e.Urgent || (urgent && req.UrgentReason != e.UrgentReason)))
         {
+            anyChange = true;
             e.Urgent = urgent;
             e.UrgentReason = urgent ? req.UrgentReason : null;
             Audit.Add(db, userId, clinicId, "urgent", "queue_entry", e.Id, ip, new { urgent, reasonCode = e.UrgentReason });
         }
         await db.SaveChangesAsync();
         await tx.CommitAsync();
+        if (anyChange) await EmitAsync(clinicId, e.PatientId, motherSees);
         return new(new { id = e.Id, queueNo = e.QueueNo, status = e.Status, roomId = e.RoomId, staffId = e.StaffId, urgent = e.Urgent, urgentReason = e.UrgentReason, checkedInAt = e.CheckedInAt });
     }
 

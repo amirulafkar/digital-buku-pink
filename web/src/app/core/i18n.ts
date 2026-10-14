@@ -161,7 +161,9 @@ export const EN = {
   'rooms.empty': 'No rooms set up.',
   'walkin.done': 'Checked in. Queue number {no}.',
   'state.loading': 'Loading',
-  'state.offline': 'You are offline or the server cannot be reached. Changes are paused until it is back.',
+  'state.offline': 'No connection. Showing the last update from {time}.',
+  'state.offline.nodata': 'No connection. Nothing has loaded yet.',
+  'state.live.paused': 'Live updates paused. Checking again.',
   'state.offline.short': 'Offline',
   'state.retry': 'Retry',
   'state.close': 'Close',
@@ -178,7 +180,7 @@ export const MS_REVIEWED: ReadonlySet<Key> = new Set<Key>([]);
 export const msUnreviewed = (): Key[] => (Object.keys(EN) as Key[]).filter(k => !MS_REVIEWED.has(k));
 
 export const MS: Record<Key, string> = {
-  'app.name': 'Buku Pink Digital',
+  'app.name': 'Digital Buku Pink', // a name is not translated
   'app.demo': 'demo',
   'app.skip': 'Langkau ke kandungan utama',
   'notice.full': 'Prototaip untuk demonstrasi. Tidak diluluskan oleh Kementerian Kesihatan Malaysia (KKM). Semua data yang dipaparkan adalah rekaan.',
@@ -331,7 +333,9 @@ export const MS: Record<Key, string> = {
   'rooms.empty': 'Tiada bilik disediakan.',
   'walkin.done': 'Telah didaftarkan. Nombor giliran {no}.',
   'state.loading': 'Memuatkan',
-  'state.offline': 'Anda di luar talian atau pelayan tidak dapat dicapai. Perubahan dijeda sehingga ia kembali.',
+  'state.offline': 'Tiada sambungan. Memaparkan kemas kini terakhir pada {time}.',
+  'state.offline.nodata': 'Tiada sambungan. Belum ada apa yang dimuatkan.',
+  'state.live.paused': 'Kemas kini langsung dijeda. Sedang menyemak semula.',
   'state.offline.short': 'Luar talian',
   'state.retry': 'Cuba lagi',
   'state.close': 'Tutup',

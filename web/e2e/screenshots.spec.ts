@@ -182,10 +182,12 @@ test('state: error with retry', async ({ browser }) => {
 });
 
 test('state: offline banner', async ({ browser }) => {
-  const { ctx, page } = await statePage(browser);
+  const { ctx, page } = await newPage(browser, 'light', 'en');
+  await page.route('**/hubs/**', r => r.abort()); // hub blocked so the 5 s fallback poll finds the failure
+  await signIn(page);
   await page.locator('[data-testid=queue-list] > li').first().waitFor();
   await page.route('**/api/v1/staff/queue', r => r.abort());
-  await page.getByText('You are offline or the server cannot be reached').waitFor({ timeout: 12_000 });
+  await page.getByText('No connection. Showing the last update from').waitFor({ timeout: 12_000 });
   await page.waitForTimeout(300);
   await page.screenshot({ path: `${OUT}/63-offline.png` });
   await ctx.close();

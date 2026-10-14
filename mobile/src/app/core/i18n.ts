@@ -115,7 +115,9 @@ export const EN = {
   'settings.version': 'Prototype for demonstration',
 
   'state.loading': 'Loading',
-  'state.offline': 'You are offline or the server cannot be reached.',
+  'state.offline': 'No connection. Showing the last update from {time}.',
+  'state.offline.nodata': 'No connection. Nothing has loaded yet.',
+  'state.live.paused': 'Live updates paused. Checking again.',
   'state.retry': 'Retry',
 } as const;
 
@@ -238,7 +240,9 @@ export const MS: Record<Key, string> = {
   'settings.version': 'Prototaip untuk demonstrasi',
 
   'state.loading': 'Memuatkan',
-  'state.offline': 'Anda di luar talian atau pelayan tidak dapat dicapai.',
+  'state.offline': 'Tiada sambungan. Memaparkan kemas kini terakhir pada {time}.',
+  'state.offline.nodata': 'Tiada sambungan. Belum ada apa yang dimuatkan.',
+  'state.live.paused': 'Kemas kini langsung dijeda. Sedang menyemak semula.',
   'state.retry': 'Cuba lagi',
 };
 

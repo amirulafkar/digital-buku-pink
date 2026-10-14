@@ -16,7 +16,7 @@ declare const ngDevMode: boolean | undefined; // false in production builds, so 
       <h1 id="h" pageHeading>{{ i.t('scan.title') }}</h1>
       <p class="muted">{{ i.t('scan.intro') }}</p>
 
-      @if (conn.offline()) { <p id="scan-off" class="msg" role="status"><i class="ph ph-wifi-slash" aria-hidden="true"></i>{{ i.t('scan.offline') }}</p> }
+      @if (!conn.canWrite()) { <p id="scan-off" class="msg" role="status"><i class="ph ph-wifi-slash" aria-hidden="true"></i>{{ i.t('scan.offline') }}</p> }
       @if (error(); as e) {
         <p class="msg bad" role="alert" data-testid="scan-error" [attr.data-code]="e"><i class="ph ph-warning-circle" aria-hidden="true"></i>{{ i.t(errKey()) }}</p>
       }
@@ -28,16 +28,16 @@ declare const ngDevMode: boolean | undefined; // false in production builds, so 
 
       @if (!camera()) {
         @if (error() !== 'denied') {
-          <button class="btn primary block" type="button" (click)="start()" [attr.aria-disabled]="conn.offline() || busy() ? 'true' : null" [attr.aria-describedby]="conn.offline() ? 'scan-off' : null" data-testid="open-camera"><i class="ph ph-camera" aria-hidden="true"></i>{{ i.t('scan.start') }}</button>
+          <button class="btn primary block" type="button" (click)="start()" [attr.aria-disabled]="!conn.canWrite() || busy() ? 'true' : null" [attr.aria-describedby]="!conn.canWrite() ? 'scan-off' : null" data-testid="open-camera"><i class="ph ph-camera" aria-hidden="true"></i>{{ i.t('scan.start') }}</button>
         }
       } @else {
         <button class="btn block" type="button" (click)="stop()"><i class="ph ph-x" aria-hidden="true"></i>{{ i.t('scan.stop') }}</button>
       }
       @if (error() === 'denied') {
-        <button class="btn primary block" type="button" (click)="start()" [attr.aria-disabled]="conn.offline() ? 'true' : null" data-testid="camera-retry"><i class="ph ph-arrow-clockwise" aria-hidden="true"></i>{{ i.t('scan.retry') }}</button>
+        <button class="btn primary block" type="button" (click)="start()" [attr.aria-disabled]="!conn.canWrite() ? 'true' : null" data-testid="camera-retry"><i class="ph ph-arrow-clockwise" aria-hidden="true"></i>{{ i.t('scan.retry') }}</button>
       }
       @if (retryToken()) {
-        <button class="btn block" type="button" (click)="retry()" [disabled]="conn.offline() || busy()" data-testid="scan-retry"><i class="ph ph-arrow-clockwise" aria-hidden="true"></i>{{ i.t('scan.retry') }}</button>
+        <button class="btn block" type="button" (click)="retry()" [disabled]="!conn.canWrite() || busy()" data-testid="scan-retry"><i class="ph ph-arrow-clockwise" aria-hidden="true"></i>{{ i.t('scan.retry') }}</button>
       }
       <button class="btn block" type="button" (click)="askStaff.set(!askStaff())" [attr.aria-expanded]="askStaff()" aria-controls="ask-text" data-testid="ask-staff"><i class="ph ph-hand-waving" aria-hidden="true"></i>{{ i.t('scan.ask') }}</button>
       @if (askStaff()) { <p id="ask-text" class="msg" role="status" data-testid="ask-text"><i class="ph ph-info" aria-hidden="true"></i>{{ i.t('scan.ask.text') }}</p> }
@@ -85,7 +85,7 @@ export class Scan implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void { this.stop(); }
 
   async start(): Promise<void> {
-    if (this.conn.offline() || this.busy()) return; // aria-disabled: focusable, announces unavailable, does nothing
+    if (!this.conn.canWrite() || this.busy()) return; // aria-disabled: focusable, announces unavailable, does nothing
     this.error.set(null);
     if (!navigator.mediaDevices?.getUserMedia) { this.error.set('unsupported'); return; }
     try {
@@ -123,6 +123,8 @@ export class Scan implements AfterViewInit, OnDestroy {
   /** newAttempt: a fresh scan gets a fresh key; a retry after a lost response reuses the previous one. */
   async submit(token: string, newAttempt: boolean): Promise<void> {
     this.error.set(null);
+    // Offline gate in logic, not only on the button (a QR read or a pasted token must not send). The token is kept in memory so Try again works once back online.
+    if (!this.conn.canWrite()) { this.stop(); this.retryToken.set(token); return; }
     this.busy.set(true);
     try {
       await this.checkin.submit(token, newAttempt);

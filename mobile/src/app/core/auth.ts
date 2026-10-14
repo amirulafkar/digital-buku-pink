@@ -17,7 +17,16 @@ class MemoryTokenStore implements TokenStore {
   set(v: string | null) { this.v = v; }
 }
 
-const isAuthCall = (req: HttpRequest<unknown>) => req.url.includes('/api/v1/auth/');
+/** Reads only the expiry time from the token payload (no verification: the server does that). */
+export function expiresWithin(jwt: string, seconds: number, now = Date.now()): boolean {
+  try {
+    const b64 = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const exp = (JSON.parse(atob(b64)) as { exp?: number }).exp;
+    return typeof exp !== 'number' || exp * 1000 - now < seconds * 1000;
+  } catch { return true; }
+}
+
+const isAuthCall =(req: HttpRequest<unknown>) => req.url.includes('/api/v1/auth/');
 
 @Injectable({ providedIn: 'root' })
 export class Auth {
@@ -37,6 +46,15 @@ export class Auth {
     this.access.set(r.accessToken);
     this.store.set(r.refreshToken); // rotated on every refresh
     this.signedIn.set(true);
+  }
+
+  /**
+   * The access token for the live hub: from memory, renewed first if it ends within 30 s (the hub closes at expiry and reconnects).
+   * Never written anywhere.
+   */
+  async freshToken(): Promise<string> {
+    if (!this.access() || expiresWithin(this.access()!, 30)) await this.refresh();
+    return this.access() ?? '';
   }
 
   /** Returns 'ok', 'denied' (wrong details or locked, same message) or 'limited' (429) or 'error'. */

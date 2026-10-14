@@ -3,13 +3,14 @@ import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular
 import { RouterLink } from '@angular/router';
 import { Api, MyQueue } from '../../core/api';
 import { I18n } from '../../core/i18n';
+import { Live } from '../../core/live';
 import { Connectivity, Poller } from '../../core/poll';
 import { Skeleton } from '../../shared/states';
 
 const STEPS = ['waiting', 'called', 'in_room', 'completed'] as const;
 const ICON: Record<string, string> = { waiting: 'ph-user-circle', called: 'ph-megaphone', in_room: 'ph-door-open', completed: 'ph-check-circle' };
 
-/** Live status. Polls every 15 s while the screen is visible, backs off to 60 s after an error. No wait time, no priority wording. */
+/** Live status. The hub says "changed"; this screen then reloads over REST. Safety poll 60 s while the hub is up, 15 s while it is not, 60 s while offline. No wait time, no priority wording. */
 @Component({
   selector: 'app-status',
   imports: [PageHeading, RouterLink, Skeleton],
@@ -76,10 +77,11 @@ export class Status implements OnInit, OnDestroy {
   failed = signal(false);
   updated = signal<string | null>(null);
   known = computed(() => STEPS.includes(this.data()?.status as (typeof STEPS)[number]));
-  private poller = new Poller(() => this.load(), this.conn, 15000, 60000);
+  private live = inject(Live);
+  private poller = new Poller(() => this.load(), this.conn, { fallbackMs: 15_000, offlineMs: 60_000 });
 
-  ngOnInit(): void { this.poller.start(); }
-  ngOnDestroy(): void { this.poller.stop(); }
+  ngOnInit(): void { this.poller.start(); this.live.start(() => this.poller.changed()); }
+  ngOnDestroy(): void { this.live.stop(); this.poller.stop(); }
   refresh(): void { void this.poller.refreshNow(); }
 
   icon(s: string): string { return ICON[s]; }

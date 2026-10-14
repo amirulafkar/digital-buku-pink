@@ -57,6 +57,15 @@ export class Auth {
     return this.refreshing;
   }
 
+  /**
+   * The access token for the live hub: from memory, renewed first if it ends within 30 s (the hub closes at expiry and reconnects).
+   * Never written anywhere.
+   */
+  async freshToken(): Promise<string> {
+    if (!this.access() || expiresWithin(this.access()!, 30)) await this.refresh();
+    return this.access() ?? '';
+  }
+
   /** Called once at startup so a page reload keeps the session. */
   async restore(): Promise<void> { if (sessionStorage.getItem(RT_KEY)) await this.refresh(); }
 
@@ -72,7 +81,16 @@ export class Auth {
   }
 }
 
-const isAuthCall = (req: HttpRequest<unknown>) => req.url.includes('/api/v1/auth/');
+/** Reads only the expiry time from the token payload (no verification: the server does that). */
+export function expiresWithin(jwt: string, seconds: number, now = Date.now()): boolean {
+  try {
+    const b64 = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const exp = (JSON.parse(atob(b64)) as { exp?: number }).exp;
+    return typeof exp !== 'number' || exp * 1000 - now < seconds * 1000;
+  } catch { return true; }
+}
+
+const isAuthCall =(req: HttpRequest<unknown>) => req.url.includes('/api/v1/auth/');
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(Auth);

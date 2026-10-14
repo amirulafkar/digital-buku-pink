@@ -27,6 +27,8 @@ builder.Services.AddScoped<QueueService>();
 builder.Services.AddScoped<StaffService>();
 builder.Services.AddScoped<PatientService>();
 builder.Services.AddOpenApi();
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IQueueNotifier, QueueNotifier>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
 builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
@@ -42,6 +44,18 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
             NameClaimType = "sub",
             RoleClaimType = "role",
             ClockSkew = TimeSpan.FromSeconds(30),
+        };
+        // Browsers cannot set headers on a WebSocket, so the hub (and only the hub) may take the token from ?access_token=.
+        // Any other route ignores the query string, so a token in a URL never authenticates a REST call.
+        o.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                if (ctx.HttpContext.Request.Path.StartsWithSegments(QueueGroups.Path)
+                    && ctx.Request.Query.TryGetValue("access_token", out var t) && !string.IsNullOrEmpty(t))
+                    ctx.Token = t.ToString();
+                return Task.CompletedTask;
+            },
         };
     });
 builder.Services.AddRateLimiter(o =>
@@ -67,7 +81,8 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy("Staff", p => p.RequireRole(Roles.Nurse, Roles.ClinicAdmin))
     .AddPolicy("Nurse", p => p.RequireRole(Roles.Nurse))
     .AddPolicy("ClinicAdmin", p => p.RequireRole(Roles.ClinicAdmin))
-    .AddPolicy("Patient", p => p.RequireRole(Roles.Patient));
+    .AddPolicy("Patient", p => p.RequireRole(Roles.Patient))
+    .AddPolicy("Live", p => p.RequireRole(Roles.Nurse, Roles.ClinicAdmin, Roles.Patient)); // hub: any signed-in role; groups decide what each hears
 
 var app = builder.Build();
 
@@ -107,6 +122,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter(); // after auth so per-user policies can read the token
 app.MapGet("/health", () => Results.Ok());
+// S5: live refresh signal, server to client only. CloseOnAuthenticationExpiration ends the connection when the 15 min access token expires; the client reconnects with a fresh one.
+app.MapHub<QueueHub>(QueueGroups.Path, o => o.CloseOnAuthenticationExpiration = true).RequireAuthorization("Live");
 
 var auth = app.MapGroup("/api/v1/auth").RequireRateLimiting("auth"); // CORS/HSTS: confirm at the reverse proxy later
 auth.MapPost("/login", async (LoginRequest r, AuthService s, HttpContext c) =>

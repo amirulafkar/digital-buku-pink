@@ -45,7 +45,7 @@
         <i class="ph" [class]="isDark() ? 'ph-sun' : 'ph-moon'" aria-hidden="true"></i>
       </button>
       @if (auth.isNurse()) {
-        <button type="button" class="cta" (click)="walkIn()" [disabled]="conn.offline()" data-testid="topbar-walkin">
+        <button type="button" class="cta" (click)="walkIn()" [disabled]="!conn.canWrite()" data-testid="topbar-walkin">
           <i class="ph ph-user-plus" aria-hidden="true"></i>{{ i.t('nav.walkin') }}</button>
       }
     </header>

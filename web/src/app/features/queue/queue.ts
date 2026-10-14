@@ -7,6 +7,7 @@ import { Api, Nurse, PatchBody, QueueEntry, Room, Status } from '../../core/api'
 import { Auth } from '../../core/auth';
 import { I18n } from '../../core/i18n';
 import { Events } from '../../core/events';
+import { Live } from '../../core/live';
 import { Connectivity, Poller } from '../../core/poll';
 import { EmptyState, ErrorState, Skeleton } from '../../shared/states';
 import { StatusChip } from '../../shared/status-chip';
@@ -37,10 +38,12 @@ export class Queue implements OnInit, OnDestroy {
 
   private roomName = computed(() => new Map(this.rooms().map(r => [r.id, r.name])));
   private nurseName = computed(() => new Map(this.nurses().map(n => [n.id, n.displayName])));
-  canWrite = computed(() => this.auth.isNurse() && !this.conn.offline());
+  canWrite = computed(() => this.auth.isNurse() && this.conn.canWrite());
   isAdmin = computed(() => this.auth.isAdmin());
 
-  private poller = new Poller(() => this.load(), this.conn);
+  private live = inject(Live);
+  /** The hub says "changed" and the board reloads over REST. Safety poll 60 s while the hub is up, 5 s while it is not, 15 s offline. */
+  private poller = new Poller(() => this.load(), this.conn, { fallbackMs: 5000, offlineMs: 15_000 });
   private started = false;
 
   // Filters: 'all', a status, or 'walkin'. Order is always the server's check-in order.
@@ -78,9 +81,10 @@ export class Queue implements OnInit, OnDestroy {
     void this.api.nurses().then(n => this.nurses.set(n)).catch(() => undefined);
     this.started = true;
     this.poller.start();
+    this.live.start(() => this.poller.changed());
   }
 
-  ngOnDestroy(): void { this.poller.stop(); }
+  ngOnDestroy(): void { this.live.stop(); this.poller.stop(); }
 
   /** Server order only: no client sorting, reordering or auto-selection. */
   private async load(): Promise<void> {

@@ -149,9 +149,10 @@ test('S4-A6 status shows the steps, the room when called, missed copy, and keeps
   await expect(page.locator('[data-step=called]')).toHaveAttribute('data-state', 'current');
   await expect(page.getByTestId('room')).toHaveText(`Go to ${rooms[1].name}.`);
 
-  // Offline: the poll fails, the last status stays, the banner shows and scanning is disabled.
+  // Offline: the refetch fails (a staff change triggers it over the hub), the last status stays, the banner shows and scanning is disabled.
   await page.route('**/api/v1/queue/me', r => r.abort());
-  await expect(page.getByText('You are offline or the server cannot be reached.')).toBeVisible({ timeout: 25_000 });
+  await n.patch(`staff/queue/${sitiRow.id}`, { data: { roomId: rooms[0].id } });
+  await expect(page.getByTestId('offline-text')).toContainText('No connection. Showing the last update from', { timeout: 15_000 });
   await expect(page.getByTestId('updated')).toContainText('Last updated');
   await expect(page.getByTestId('queue-no')).toHaveText(sitiRow.queueNo);
   await page.unroute('**/api/v1/queue/me');

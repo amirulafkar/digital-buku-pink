@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { APIRequestContext, Page, expect, request } from '@playwright/test';
 
 export const STAFF_PASSWORD = process.env['SEED_STAFF_PASSWORD'] ?? '';
@@ -85,4 +86,47 @@ export async function checkInUI(page: Page): Promise<string> {
   await page.getByTestId('dev-submit').click();
   await page.waitForURL('**/confirmation');
   return (await page.getByTestId('queue-no').innerText()).trim();
+}
+
+// ---- S5 helpers ----
+/** An API context signed in as a fictional mother (not the UI), for setup only. */
+export async function motherApi(m: { name: string; phone: string }, other = false): Promise<APIRequestContext> {
+  await ensureMother(m, other);
+  const anon = await api();
+  const r = await anon.post('auth/login', { data: { identifier: m.phone, password: MOTHER_PW } });
+  expect(r.ok()).toBeTruthy();
+  const { accessToken } = await r.json();
+  return request.newContext({ baseURL: API + '/', extraHTTPHeaders: { Authorization: `Bearer ${accessToken}` } });
+}
+
+/** Makes sure this mother has a queue entry today (a repeat returns the same entry). Returns her latest row. */
+export async function ensureEntry(m: { name: string; phone: string }): Promise<{ id: string; queueNo: string; status: string }> {
+  const ctx = await motherApi(m);
+  const r = await ctx.post('checkins', { data: { token: await qrToken(), idempotencyKey: randomUUID() } });
+  expect([200, 201]).toContain(r.status());
+  return myRow(m.name);
+}
+
+export async function myRow(name: string): Promise<{ id: string; queueNo: string; status: string }> {
+  const row = (await queueRows()).filter(r => r.displayName?.startsWith(name)).at(-1);
+  expect(row, `${name} has a queue entry`).toBeTruthy();
+  return row!;
+}
+
+const NEXT: Record<string, string> = { waiting: 'called', called: 'in_room', in_room: 'completed' };
+/** Staff move the entry one step along. Fails clearly if the entry is already closed (run db/seed/reset.sh). */
+export async function advance(name: string): Promise<string> {
+  const row = await myRow(name);
+  const to = NEXT[row.status];
+  expect(to, `${name} is ${row.status}; run CONFIRM_RESET=yes db/seed/reset.sh for a fresh day`).toBeTruthy();
+  await setStatus(row.id, to);
+  return to;
+}
+
+/** Waits until the status screen has opened the live hub (negotiate answered) and the group join has had time to finish. */
+export async function hubReady(page: Page, open: () => Promise<void>): Promise<void> {
+  const negotiated = page.waitForResponse(r => r.url().includes('/hubs/queue/negotiate') && r.ok());
+  await open();
+  await negotiated;
+  await page.waitForTimeout(1200);
 }

@@ -391,12 +391,14 @@ for (const theme of ['light', 'dark'] as const) {
       await page.unroute(QUEUE);
 
       // Offline: the page loaded, then the network goes away.
+      await page.route('**/hubs/**', r => r.abort()); // S5: no hub, so the 5 s fallback poll finds the failure
       await page.goto('/queue');
       await page.locator('[data-testid=queue-list] > li').first().waitFor();
       await page.route(QUEUE, r => r.abort());
       await page.locator('app-offline-banner .offline').waitFor({ timeout: 15_000 });
       await measure(`${lang} offline`);
       await page.unroute(QUEUE);
+      await page.unroute("**/hubs/**");
 
       // Missed filter.
       await page.goto('/queue');
