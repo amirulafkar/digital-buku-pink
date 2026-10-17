@@ -11,3 +11,5 @@ dist/
 TestResults/
 awesome-design-md/
 web/screenshots/
+db/backups/
+*.dump

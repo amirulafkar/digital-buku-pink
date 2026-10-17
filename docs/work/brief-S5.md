@@ -35,7 +35,7 @@ Sources: 03 week 9 and stack table; 04a FR-05, FR-12, FR-13, FR-16, NFR-04..09; 
 - S5-A5 FR-13: Given check-in replay returns 200, Then no event; given 201, then exactly one event.
 - S5-A6 Auth: Given no token, Then negotiate 401; given query token on any /api route, Then 401.
 - S5-A7 FR-05 e2e: Given /status open with fallback poll disabled, When staff PATCH, Then status updates within 5 s without reload.
-- S5-A8 NFR-09 e2e: Given hub request blocked, When staff PATCH, Then status updates within 15 s and "Live updates paused" shows.
+- S5-A8 NFR-09 e2e: Given hub request blocked, When staff PATCH, Then status updates within 15 s plus request time (poll interval 15 s; test allows 16.5 s) and "Live updates paused" shows.
 - S5-A9 NFR-05 e2e: Given API stopped, Then offline banner, scan disabled, last status with "Last updated", no wait text. When API returns and Retry pressed, Then banner clears and one refetch.
 - S5-A10 FR-12 e2e: Given status and home in connected, reconnecting and offline states, Then notice visible in BM and EN.
 - S5-A11 NFR-07 axe: zero serious violations on status (3 states), board with banner, both themes; banner role=status; targets >= 44 px; 200% text no clipping; 320 px reflow.
