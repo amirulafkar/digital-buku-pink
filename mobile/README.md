@@ -22,4 +22,4 @@ Activate, log in (phone and password), Home (greeting and next appointment), Sca
 - QR scanning uses the camera (`getUserMedia`) and `jsQR`. The developer-only "paste a QR token" field is loaded behind `ngDevMode`, so production builds contain neither the component nor its chunk. It still calls the real `POST /checkins`.
 - The FR-12 safety notice is one shared component on every signed-in screen. Its wording is a PLACEHOLDER marked "NEEDS MOH APPROVAL" and must be approved before any pilot. All Bahasa Malaysia text needs native review (tracked per key in `src/app/core/i18n.ts`).
 - Offline (S5) means a banner and a Retry button only: scan is disabled, the last status stays with its time. There is no offline queue and no native build.
-- Strict Content-Security-Policy meta tag in `src/index.html`; also set a CSP at the reverse proxy, with the `wss` origin for the hub.
+- Strict Content-Security-Policy meta tag in `src/index.html`; also set a CSP at the reverse proxy.

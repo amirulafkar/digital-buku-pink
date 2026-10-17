@@ -1,6 +1,7 @@
 // Pages build only. Run from the app folder after `ng build --configuration pages`.
 //   node scripts/csp.mjs           writes connect-src into dist/pages/browser/index.html, then checks it
 //   node scripts/csp.mjs --check   checks only (exit 1 on any problem)
+// The policy is exactly connect-src 'self' plus that one https origin (no ws or wss: the hub is long polling).
 // The origin comes from src/environments/environment.pages.ts, the same value the bundle was built with. No wildcard is ever written.
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -12,7 +13,7 @@ const fail = msg => { console.error('CSP check failed: ' + msg); process.exit(1)
 const env = readFileSync('src/environments/environment.pages.ts', 'utf8');
 const api = (env.match(/apiBase:\s*'([^']*)'/) ?? [])[1] ?? '';
 if (!/^https:\/\/[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:\d+)?$/i.test(api)) fail(`apiBase "${api}" must be https://host with no path, wildcard or trailing slash`);
-const expected = `connect-src 'self' ${api} wss://${api.slice('https://'.length)}`;
+const expected = `connect-src 'self' ${api}`; // the live hub is long polling over https, so no ws: or wss: origin is needed
 
 let html = readFileSync(file, 'utf8');
 if (!process.argv.includes('--check')) {
@@ -27,7 +28,7 @@ if (!csp) fail('no Content-Security-Policy meta tag in index.html');
 const found = csp.match(/connect-src[^;]*/g) ?? [];
 if (found.length !== 1) fail(`expected exactly one connect-src, found ${found.length}`);
 if (found[0].trim() !== expected) fail(`connect-src is "${found[0].trim()}", expected "${expected}"`);
-if (/\*|ws:\/\/|127\.0\.0\.1|localhost|http:/.test(found[0])) fail('connect-src has a wildcard, plain ws, http or local origin');
+if (/\*|wss?:|127\.0\.0\.1|localhost|http:/.test(found[0])) fail('connect-src has a wildcard, a ws or wss origin, plain http or a local origin');
 
 const js = readdirSync(dir).filter(f => f.endsWith('.js')).some(f => readFileSync(join(dir, f), 'utf8').includes(api));
 if (!js) fail('the built bundle does not contain the API origin (fileReplacements not applied?)');

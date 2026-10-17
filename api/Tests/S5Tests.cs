@@ -252,16 +252,20 @@ public class S5Tests(DbFixture fx)
 
     // ---------- S5-A6 ----------
     [Fact]
-    public async Task S5_A6_hub_needs_a_token_and_a_query_token_works_only_on_the_hub()
+    public async Task S5_A6_hub_needs_a_header_token_and_a_token_in_any_URL_never_authenticates()
     {
         var anon = fx.Factory.CreateClient();
         Assert.Equal(HttpStatusCode.Unauthorized, (await anon.PostAsync("/hubs/queue/negotiate?negotiateVersion=1", null)).StatusCode);
 
         var (_, nTok) = await Nurse();
-        // Query token on the hub negotiate: accepted (browsers cannot set WebSocket headers).
-        Assert.Equal(HttpStatusCode.OK, (await anon.PostAsync($"/hubs/queue/negotiate?negotiateVersion=1&access_token={nTok}", null)).StatusCode);
-        // A bad query token is refused.
+        // Header token on the hub negotiate: accepted. The same token in the query string (the old WebSocket way) is NOT: the path is closed.
+        Assert.Equal(HttpStatusCode.OK, (await WithToken(fx.Factory, nTok).PostAsync("/hubs/queue/negotiate?negotiateVersion=1", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anon.PostAsync($"/hubs/queue/negotiate?negotiateVersion=1&access_token={nTok}", null)).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await anon.PostAsync("/hubs/queue/negotiate?negotiateVersion=1&access_token=not-a-token", null)).StatusCode);
+        // Hub poll and close calls (GET, DELETE) with the token in the query string are refused too.
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anon.GetAsync($"/hubs/queue?id=abc&access_token={nTok}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anon.DeleteAsync($"/hubs/queue?id=abc&access_token={nTok}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anon.PostAsync($"/hubs/queue?id=abc&access_token={nTok}", null)).StatusCode);
         // The same valid token in the query of any API route does not authenticate.
         foreach (var path in new[] { "/api/v1/staff/queue", "/api/v1/staff/rooms", "/api/v1/me", "/api/v1/queue/me" })
             Assert.Equal(HttpStatusCode.Unauthorized, (await anon.GetAsync($"{path}?access_token={nTok}")).StatusCode);

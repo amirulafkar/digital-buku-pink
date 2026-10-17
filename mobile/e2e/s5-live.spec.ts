@@ -1,4 +1,5 @@
-import { Page, WebSocketRoute, expect, test } from '@playwright/test';
+import { Page, expect, test } from '@playwright/test';
+import { trackHub } from './hub';
 import { MOTHERS, MOTHER_PW, advance, ensureEntry, ensureMother, hubReady, loginUI, nurse, qrToken } from './support';
 
 // S5 live updates, fallback, offline and token hygiene. Mother "Priya" is used in order: first check-in (A14), then two staff steps
@@ -160,12 +161,10 @@ test('S5-A10 FR-12 safety notice on status and home in connected, reconnecting a
 
 test('S5-A13 NFR-02 no token in localStorage, sessionStorage or cookies after the live connect and after a reconnect', async ({ page, context }) => {
   await ensureEntry(priya);
-  let current: WebSocketRoute | null = null;
-  let sockets = 0;
-  await page.routeWebSocket(/\/hubs\/queue/, ws => { sockets++; current = ws; ws.connectToServer(); });
+  const hub = await trackHub(page); // the hub is long polling: one negotiate per connection, drop() aborts the held poll
   await loginUI(page, priya.phone);
   await hubReady(page, () => openStatus(page));
-  await expect.poll(() => sockets).toBe(1);
+  await expect.poll(() => hub.negotiates()).toBe(1);
 
   const clean = async (label: string) => {
     const dump = await page.evaluate(() => JSON.stringify({ l: { ...localStorage }, s: { ...sessionStorage }, c: document.cookie }));
@@ -177,9 +176,9 @@ test('S5-A13 NFR-02 no token in localStorage, sessionStorage or cookies after th
   };
   await clean('after connect');
 
-  // Drop the live socket: the client reconnects by itself with a token read from memory.
-  await current!.close();
-  await expect.poll(() => sockets, { timeout: 15_000 }).toBe(2);
+  // Drop the live connection: the client reconnects by itself with a token read from memory.
+  await hub.drop();
+  await expect.poll(() => hub.negotiates(), { timeout: 15_000 }).toBe(2);
   await expect(page.getByTestId('conn-banner')).toHaveAttribute('data-state', 'connected');
   await page.waitForTimeout(500);
   await clean('after reconnect');

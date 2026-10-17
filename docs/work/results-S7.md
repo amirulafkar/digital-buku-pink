@@ -1,5 +1,5 @@
 # Results S7: free-tier demo deployment (no feature)
-Progress notes (survive a stall). Nothing committed.
+Progress notes (survive a stall). Nothing committed. NOTE: statements below about the hub token in the query string and about WebSockets are superseded by the long polling follow-up at the end of this file.
 
 - Step 1 done (2026-10-18): API side in api/Api/Program.cs (exact-origin CORS from Cors:AllowedOrigins, forwarded headers gated by Hosting:TrustForwardedHeaders, ForwardLimit 1), appsettings.json placeholder `Cors:AllowedOrigins: []`, tests in api/Tests/S7Tests.cs: 22 S7 tests pass.
 - Step 2 done (2026-10-18): web+mobile apiBase via environment.ts / environment.pages.ts, api-base.ts interceptor (first in chain) + hub URL, angular.json configuration `pages` (outputPath dist/pages), scripts/csp.mjs, public/_redirects and _headers; unit tests web 26 (was 22), mobile 27 (was 23); build:pages OK both apps, csp check OK; tamper check exits 1.
@@ -19,7 +19,7 @@ Progress notes (survive a stall). Nothing committed.
 | Mobile unit | 27 passed (4 new) | 23 |
 | Mobile e2e | 80 passed | 80 |
 | Mobile `build:prod` and `check:prod` | OK, 40 production files checked (was 39: bundle chunking changed with the new module) | OK |
-| `npm run build:pages` web and mobile, `check:pages` | OK, `connect-src 'self' https://dbp-api.onrender.com wss://dbp-api.onrender.com`; tampering (added `https://*.pages.dev`) makes the check exit 1 | new |
+| `npm run build:pages` web and mobile, `check:pages` | OK, `connect-src 'self' https://dbp-api.onrender.com` (the `wss://` entry was dropped in the long polling follow-up); tampering (added `https://*.pages.dev`) makes the check exit 1 | new |
 
 ## Acceptance
 - S7-A1: S7Tests S7A1_* (listed origins echoed, no credentials header; preview, wrong scheme, wrong port, look-alike and "null" origins get nothing; preflight allows Authorization, Content-Type, X-SignalR-User-Agent and only GET, POST, PATCH; empty config means no CORS headers; wildcard, path, trailing slash or ftp origin stops the API at start). Real browser proof in the step 2b note above.
@@ -53,3 +53,47 @@ Progress notes (survive a stall). Nothing committed.
 - `_headers` (web and mobile) now: HSTS, X-Content-Type-Options nosniff, Referrer-Policy no-referrer, X-Frame-Options DENY, header CSP carrying only frame-ancestors 'none' (the meta CSP is unchanged and cannot carry it). build:pages and check:pages pass in both apps.
 - deploy-demo.md: Render env row, smoke D11 (spoofed X-Forwarded-For must not be the stored ip), pg_dump, pg_restore and psql admin examples use PGPASSWORD or PG* variables (no password in a URL or argument), the hub-token paragraph states the 15-minute bearer-token risk. brief-S7.md line 7 reworded as "reported by the human, verify on the live page".
 - Re-run: API 92 passed (91 plus 1 new), web unit 26, mobile unit 27. e2e suites not re-run (no app source change; only `_headers`, Dockerfile, Program.cs CORS validation and docs changed).
+- Long polling follow-up (2026-10-18), progress: server hub Transports=LongPolling only and query access_token handling removed; clients use HttpTransportType.LongPolling; CORS allows DELETE; API tests 95; proofs run: .NET LP test, real Chromium web spec (no token in URLs, header on every poll), cross-origin real SignalR JS check, latency, idle and 1-minute-token expiry measurements. e2e suites pending.
+
+## Follow-up: SignalR over long polling (token out of the URL), 2026-10-18
+Outcome: WORKS CLEANLY, kept. The access token is no longer in any URL the clients request and is not in the API's own logs (all tested). Render's and Cloudflare's edge logs were NOT inspected, so the "token in host logs" limitation is reduced, not proven closed; verify after deploy (smoke D12, read the Render request log).
+
+What changed
+- Clients (web and mobile live.ts): `transport: HttpTransportType.LongPolling`, `withCredentials: false`. The JWT goes in the `Authorization` header of the negotiate, every poll and the close call; the URL has only `?id=<opaque connection id>`.
+- Server (api/Api/Program.cs): the hub offers LongPolling only (`Transports`), and the `OnMessageReceived` query-string handling is REMOVED, so a token in any URL authenticates nothing, hub included (the path is closed). CORS is now path-scoped: REST routes allow GET, POST, PATCH only; only the hub path also allows DELETE (the long polling client ends its connection with it); no REST route accepts DELETE (test S7A1_Every_REST_route_refuses_DELETE_with_and_without_a_Bearer). No hub contract change (`QueueChanged()`, groups, `CloseOnAuthenticationExpiration` unchanged).
+- Tests updated: S5_A6 (query token now refused on the hub), S7 CORS tests (DELETE allowed, hub GET and DELETE preflights with Authorization), existing e2e W4 and A13 used `routeWebSocket`; they now count negotiates and drop the connection through new `e2e/hub.ts` (`trackHub`, aborts the held poll). One mobile test (fixes.spec "status first-load failure") became racy because long polling connects faster and refreshes the screen before the test's click; it now blocks the hub, as that test is about the REST retry only.
+
+Proof of no token in any URL (all pass)
+- API `S7LongPollTests`: negotiate offers LongPolling only; a WebSocket-only client cannot connect; during connect, an event, stop and reconnect every hub request has the Bearer header (except the DELETE), none has `access_token` or the JWT in its URL, and the Serilog output contains neither the tokens nor `access_token`.
+- Real Chromium, web `e2e/s7-longpoll.spec.ts` and mobile `e2e/s7-longpoll.spec.ts`: every request URL recorded across connect, event, dropped connection and reconnect has no `access_token` and no JWT-shaped text; every hub request has `Authorization: Bearer eyJ...`; no hub WebSocket opens.
+- Cross-origin (real SignalR JS in a page on http://localhost:9999, API on 127.0.0.1:5080 with Cors__AllowedOrigins): login, negotiate, polls, event delivery and stop all work; the browser sent the Authorization header on negotiate, polls and DELETE; no CORS failure; event reached the page 196 ms after the staff POST. Dev API log had 0 matches for `access_token`. (Chromium needed `--disable-features=LocalNetworkAccessChecks` for loopback to loopback in this harness.)
+
+Cost, measured locally (dev servers, 8 samples each, Playwright)
+- Staff PATCH to the mother's /status and to the staff board: median 524 ms, range 520 to 554 ms. Dominated by the existing 500 ms coalescing window; the event itself arrives in about 0.2 s. For reference the existing e2e timings on this run: S5-A7 820 ms (mother, includes test overhead), S5-W1 852 ms and 1103 ms (board), fallback polls unchanged (S5-A8 15.1 s, S5-W2 5.1 s). No latency regression; well inside "a few seconds".
+- Idle requests (2 minutes, one open screen): mother and staff pages each made 3 requests: 1 hub poll (the server ends a poll after about 90 s, the client re-polls) and 2 safety refreshes. About 1.5 requests per minute in total, 0.5 per minute from the hub; the WebSocket made none after connecting (plus its keep-alive frames).
+- Token expiry: with `Auth__AccessMinutes=1` a staff board stayed live over two expiries: a silent reconnect (new negotiate) at about +61 s and +121 s, no 401 responses, banner stayed connected, and updates after each expiry took 765 ms and 555 ms (so the hub, not the 60 s safety poll, delivered them). The 15 minute close is also covered by the API test S5_connection_is_closed_by_the_server_when_the_access_token_expires, which already ran over long polling.
+- Offline, Retry, banners, coalescing, reconnect schedule: unchanged and covered by the existing e2e and unit tests, all passing.
+
+Final counts (fresh DB before each DB suite)
+| Suite | Result | Before |
+| --- | --- | --- |
+| API | 95 passed, 0 failed (3 new in S7LongPollTests.cs) | 92 |
+| NuGet audit | clean | clean |
+| Web unit | 26 | 26 |
+| Web e2e | 62 passed (new s7-longpoll spec) | 61 |
+| Mobile unit | 27 | 27 |
+| Mobile build:prod and check:prod | OK, 40 files | OK |
+| Mobile e2e | 81 passed (new s7-longpoll spec) | 80 |
+
+Notes and decisions
+- The unused `wss://<api>` entry was dropped from connect-src (fix round 1): the built CSP is exactly `connect-src 'self' https://<api>`; `check:pages` rejects any ws or wss origin and a tampered policy (wss added, wildcard added) exits 1 in both apps.
+- Not verified: behaviour through Render's real proxy (held poll requests, idle timeouts, whether a held request keeps a free instance awake or counts toward a limit) and whether Render logs show only `?id=`; deploy check D12 covers it.
+- Long polling costs a held HTTP request per open screen on the single free API instance.
+
+## Long polling fix round 1 (2026-10-18)
+- Docs, README and the appsettings comment no longer claim edge logs are token-free: only the clients' URLs and the API's own logs are tested; Render and Cloudflare logs are to be checked after deploy (smoke D12 now includes reading the Render request log for `access_token` and `eyJ`).
+- CORS is path-scoped (`DemoApi`: GET, POST, PATCH; `DemoHub`: GET, POST, DELETE). Restored tests: REST preflight lists no DELETE or PUT, hub preflights allow GET, POST, DELETE and not PATCH, and every REST route answers DELETE with 401, 404 or 405 without a Bearer and 404 or 405 with one. The duplicate PUT assert is gone.
+- The DELETE exemption is removed from the Bearer assertion in S7LongPollTests, web and mobile s7-longpoll specs: the .NET client's close call carries the Bearer (test passes; the browser client's DELETE had it in the earlier cross-origin trace). The API test also asserts a DELETE was actually made. e2e not re-run by me this round (the lead runs them).
+- S5_A6 extended: a token in the query of hub GET, DELETE and POST is refused with 401.
+- CSP: `connect-src 'self' https://<api>` only; csp.mjs rejects ws and wss origins; tamper check exits 1 (wss added, wildcard added) in web and mobile; `check:pages` passes in both.
+- Counts this round: API 96 passed (95 plus the REST DELETE test), web and mobile unit below.

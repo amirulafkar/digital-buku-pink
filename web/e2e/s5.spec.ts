@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { APIRequestContext, Browser, Page, expect, request, test } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
+import { trackHub } from './hub';
 
 // S5 on the staff board: live refresh over the hub, fallback poll, offline banner with Retry, accessibility of the banner.
 // Walk-ins are fictional names created over the API (a second "staff member"), so the board under test changes by itself.
@@ -119,9 +120,7 @@ test('S5-W3 NFR-05 API unreachable: offline banner with last update time, writes
 
 test('S5-W4 NFR-02 the live connection adds nothing to storage or cookies, before or after a reconnect', async ({ page, context }) => {
   await login(page);
-  let current: import('@playwright/test').WebSocketRoute | null = null;
-  let sockets = 0;
-  await page.routeWebSocket(/\/hubs\/queue/, ws => { sockets++; current = ws; ws.connectToServer(); });
+  const hub = await trackHub(page); // the hub is long polling: one negotiate per connection, drop() aborts the held poll
   await hubReady(page, () => page.goto('/queue'));
   const snap = () => page.evaluate(() => JSON.stringify({ l: { ...localStorage }, s: Object.keys(sessionStorage), c: document.cookie }));
   const dump = async (label: string) => {
@@ -133,8 +132,8 @@ test('S5-W4 NFR-02 the live connection adds nothing to storage or cookies, befor
     return d;
   };
   const a = await dump('after connect');
-  await current!.close();
-  await expect.poll(() => sockets, { timeout: 15_000 }).toBe(2);
+  await hub.drop();
+  await expect.poll(() => hub.negotiates(), { timeout: 15_000 }).toBe(2);
   await expect(banner(page)).toHaveAttribute('data-state', 'connected');
   const b = await dump('after reconnect');
   expect(Object.keys(b.l).sort()).toEqual(Object.keys(a.l).sort());

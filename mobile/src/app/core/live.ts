@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
+import { HttpTransportType, HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 import { apiUrl } from './api-base';
 import { Auth } from './auth';
 import { Connectivity } from './poll';
@@ -106,7 +106,7 @@ export class Live {
   private conn = inject(Connectivity);
   private client = new LiveClient(() => {
     const c = new HubConnectionBuilder()
-      .withUrl(apiUrl(HUB_URL), { accessTokenFactory: () => this.auth.freshToken(), withCredentials: false })
+      .withUrl(apiUrl(HUB_URL), { accessTokenFactory: () => this.auth.freshToken(), withCredentials: false, transport: HttpTransportType.LongPolling })
       .configureLogging(LogLevel.None)
       .build();
     return { on: (e, cb) => c.on(e, cb), onclose: cb => c.onclose(() => cb()), start: () => c.start(), stop: () => c.stop() };

@@ -27,6 +27,7 @@ test('status first-load failure says there is no status yet and offers a retry t
   await ensureMother(MOTHERS.siti);
   await loginUI(page, MOTHERS.siti.phone);
   await checkInUI(page);
+  await page.route('**/hubs/**', r => r.abort()); // keep the live connection out of it: a hub that comes up refreshes the screen by itself and would race the click below
   await page.route('**/api/v1/queue/me', r => r.abort());
   await page.getByRole('navigation').getByRole('link', { name: 'Status' }).click();
   await expect(page.getByText('Could not load your visit. Try again.')).toBeVisible({ timeout: 10_000 });

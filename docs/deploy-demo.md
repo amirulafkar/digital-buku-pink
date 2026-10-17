@@ -62,21 +62,21 @@ Plan (names proposed, change as needed): staff web on Cloudflare Pages `dbp-staf
    cd web && npm ci && npm run build:pages        # output web/dist/pages/browser
    cd ../mobile && npm install && npm run build:pages   # output mobile/dist/pages/browser
    ```
-   `build:pages` also writes the Content-Security-Policy `connect-src 'self' https://<api> wss://<api>` into `index.html` from the same `apiBase` and checks it; `npm run check:pages` repeats the check. The mobile build also confirms the developer paste field is absent.
+   `build:pages` also writes the Content-Security-Policy `connect-src 'self' https://<api>` (no `ws:` or `wss:` entry: the hub is long polling over https) into `index.html` from the same `apiBase` and checks it; `npm run check:pages` repeats the check. The mobile build also confirms the developer paste field is absent.
 3. Create two Pages projects (`dbp-staff`, `dbp-mother`) on the free plan and upload each `dist/pages/browser` folder (direct upload or the Pages build settings; check the live Pages page for current options). The folders include `_redirects` (`/* /index.html 200`, single-page routing) and `_headers` (HSTS).
 4. Put the two real `*.pages.dev` origins into `Cors__AllowedOrigins` on Render and redeploy the API if they differ from the proposed names.
 
 ## 4. Cold start and warm-up
 - A free Render service may be asleep and Neon compute may be paused when idle (confirm both on the live pages). The first request can take a while. The apps show "connecting" or the offline banner, not an error.
-- Two minutes before a demo: open `https://<api>/health`, then sign in on the staff site once. An open hub connection keeps the API awake while the demo runs.
+- Two minutes before a demo: open `https://<api>/health`, then sign in on the staff site once. Whether an open live-update poll keeps a free instance awake is not verified; keep using it during the demo anyway.
 
-## 5. Smoke checks D1 to D11 (do all, record results in `docs/work/results-S7.md`)
+## 5. Smoke checks D1 to D12 (do all, record results in `docs/work/results-S7.md`)
 | ID | Check | Pass when |
 | --- | --- | --- |
 | D1 | Cold `GET https://<api>/health` | 200; record the seconds it took |
 | D2 | Sign in on both Pages sites (NFR-02) | works; DevTools Application tab: no token in localStorage or cookies (staff refresh token is in sessionStorage by design) |
 | D3 | Staff issues a QR token (API call from `docs/demo-script.md` step 2.2 against the Render URL); mother scans on a real phone over HTTPS (NFR-05) | check-in 201, scanning again returns 200 with the same number |
-| D4 | Staff changes status (Call) | mother's Status updates in 5 s or less without reload (NFR-09), over `wss://` (DevTools Network, WS tab) |
+| D4 | Staff changes status (Call) | mother's Status updates in 5 s or less without reload (NFR-09). DevTools Network shows `POST /hubs/queue/negotiate` and repeating `GET /hubs/queue?id=...` (long polling), no WebSocket |
 | D5 | Block the API host in the browser (DevTools network blocking) | offline banner, scan disabled, last update time shown; unblock and press Retry: banner clears |
 | D6 | Sign in as `rina.demo` (other clinic) (NFR-01) | the queue shows none of clinic 1's entries |
 | D7 | As `dbp_app` from your PC: `PGPASSWORD="$DBP_APP_PASSWORD" psql "host=<direct-host> dbname=<db> user=dbp_app sslmode=require" -c "UPDATE audit_log SET action='x'"` then `DELETE FROM audit_log` and `TRUNCATE audit_log` (NFR-10) | each is refused (permission denied) |
@@ -84,6 +84,7 @@ Plan (names proposed, change as needed): staff web on Cloudflare Pages `dbp-staf
 | D9 | Restore drill (NFR-11), section 6 | login and queue read work against the restored copy |
 | D10 | Both sites, every screen | "Prototype, not MOH-approved" text visible (staff side panel and login; mother screens) |
 | D11 | Render passes the real client address (NFR-10, rate limits). From your PC: `curl -s -o /dev/null -X POST https://<api>/api/v1/auth/login -H 'X-Forwarded-For: 203.0.113.99' -H 'Content-Type: application/json' -d '{"identifier":"nobody-d11","password":"x"}'`, then as `dbp_owner`: `SELECT ip FROM audit_log ORDER BY id DESC LIMIT 1;` | the stored `ip` is your own public address, NOT `203.0.113.99`. A private or Render proxy address means the env var is missing or the proxy hides the client; `203.0.113.99` means the API trusts a forged header, so unset the env var and stop |
+| D12 | Token never in a URL or in the host log | DevTools Network, filter `hubs`: every request (negotiate, polls, the close DELETE) has an `Authorization: Bearer` header and no URL contains `access_token` or a JWT. Then open Render's request log for the API service, find the `/hubs/queue` lines from this demo and search the whole log for `access_token` and for `eyJ` | no token or JWT text anywhere in the Render log; lines show only `?id=` |
 
 ## 6. Backup and one restore drill (NFR-11, manual)
 Keep dumps outside this repository (they hold password, code, refresh-token and QR-token hashes and audit IP addresses). Retention proposed: 7 days; delete older files yourself.
@@ -99,7 +100,8 @@ Drill once: create a new Neon branch (check the live Neon page for how), create 
 - Suspected compromise: change `Auth__Key` on Render (ends every session) and, if needed, rotate the database passwords with `01-roles.sql` plus the new `ConnectionStrings__Default`.
 
 ## 8. Known limits of this demo deployment
-- The SignalR hub sends the access token in the query string (`/hubs/queue?access_token=...`), because browsers cannot set headers on a WebSocket. The host's request logs, and any proxy log, may record that URL. That token is a bearer token valid for 15 minutes: whoever reads it from a log can, until it expires, call the API as that user, meaning read that user's clinic queue or the mother's own queue status (and, for a nurse token, do the nurse actions that role allows). It cannot be refreshed without the refresh token, which is never in a URL. Accepted for the synthetic-data demo (human decision 2026-10-17), with short log retention; check the log retention on Render's live page, and do not copy log lines into chats or tickets.
+- Live updates use SignalR over **long polling only** (the server offers no other transport, and the clients ask for it). The 15-minute JWT travels in the `Authorization` header of every hub request (negotiate, each poll, the close call). What is proven by tests: no request URL the clients make contains the token (browser specs and API test), the API refuses a token in a URL (including on the hub), and the API's own logs do not contain it. What is NOT proven: Render's and Cloudflare's own edge or request logs were not inspected, so do not assume they are free of tokens. The hub URL carries only an opaque connection id (useless without a valid header). After deploy, verify with smoke D12 and read Render's request log yourself; until you have, treat the token-in-logs limitation as reduced, not closed.
+- Cost of long polling: each open screen holds one poll of up to about 90 s and makes a new one right after, so about 0.7 hub requests a minute per idle screen plus the 60 s safety refresh; an update reaches the screen in about half a second (measured locally, see results-S7.md). Whether a held request counts toward any Render or Cloudflare limit, or keeps a free instance awake, is not verified: check the live provider pages.
 - Public URLs, no access gate. Fictional data only; do not enter real people's details.
 - Free-tier cold starts, single API instance, no backplane, no scheduled backups, no custom domain.
 - Preview deployment origins on `pages.dev` are deliberately not allowed by CORS.

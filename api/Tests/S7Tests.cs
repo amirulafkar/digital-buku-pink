@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Data;
 using Data.Entities;
 using Microsoft.AspNetCore.Hosting;
@@ -79,7 +80,7 @@ public class S7Tests(DbFixture fx)
     }
 
     [Fact]
-    public async Task S7A1_Preflight_allows_Authorization_and_only_GET_POST_PATCH_with_the_listed_headers()
+    public async Task S7A1_REST_preflight_allows_Authorization_and_only_GET_POST_PATCH_and_the_hub_path_adds_DELETE()
     {
         using var f = CorsFactory();
         var c = f.CreateClient();
@@ -91,8 +92,7 @@ public class S7Tests(DbFixture fx)
         Assert.Contains("content-type", allowedHeaders);
         var methods = Header(ok, "Access-Control-Allow-Methods") ?? "";
         foreach (var m in new[] { "GET", "POST", "PATCH" }) Assert.Contains(m, methods);
-        Assert.DoesNotContain("DELETE", methods);
-        Assert.DoesNotContain("PUT", methods);
+        foreach (var m in new[] { "DELETE", "PUT" }) Assert.DoesNotContain(m, methods); // REST routes never get DELETE
         Assert.Null(Header(ok, "Access-Control-Allow-Credentials"));
         Assert.DoesNotContain("*", Header(ok, "Access-Control-Allow-Origin")!);
 
@@ -100,13 +100,47 @@ public class S7Tests(DbFixture fx)
         var hub = await c.SendAsync(Preflight("/hubs/queue/negotiate", MotherOrigin, "POST", "authorization,x-signalr-user-agent"));
         Assert.Equal(MotherOrigin, Header(hub, "Access-Control-Allow-Origin"));
 
-        // Not listed: DELETE, PUT and an arbitrary request header. The answer lists only the allowed methods and headers, so a browser refuses the real request.
-        var del = await c.SendAsync(Preflight("/api/v1/staff/queue", StaffOrigin, "DELETE", "authorization"));
-        Assert.DoesNotContain("DELETE", Header(del, "Access-Control-Allow-Methods") ?? "");
+        // The long polling poll and stop calls from a browser: GET and DELETE on the hub path (and only there) with the Authorization header.
+        foreach (var m in new[] { "GET", "POST", "DELETE" })
+        {
+            var poll = await c.SendAsync(Preflight("/hubs/queue?id=abc", MotherOrigin, m, "authorization,x-signalr-user-agent"));
+            Assert.Equal(MotherOrigin, Header(poll, "Access-Control-Allow-Origin"));
+            Assert.Contains(m, Header(poll, "Access-Control-Allow-Methods") ?? "");
+            Assert.Contains("authorization", (Header(poll, "Access-Control-Allow-Headers") ?? "").ToLowerInvariant());
+            Assert.DoesNotContain("PATCH", Header(poll, "Access-Control-Allow-Methods") ?? "");
+        }
+        // DELETE on a REST path: the preflight does not list it, so a browser would refuse the real request.
+        foreach (var path in new[] { "/api/v1/staff/queue", "/api/v1/staff/queue/00000000-0000-0000-0000-000000000000", "/api/v1/checkins", "/api/v1/auth/login" })
+            Assert.DoesNotContain("DELETE", Header(await c.SendAsync(Preflight(path, StaffOrigin, "DELETE", "authorization")), "Access-Control-Allow-Methods") ?? "", StringComparison.Ordinal);
+
+        // Not listed: PUT and an arbitrary request header. The answer lists only the allowed methods and headers, so a browser refuses the real request.
         var put = await c.SendAsync(Preflight("/api/v1/staff/queue", StaffOrigin, "PUT", "authorization"));
         Assert.DoesNotContain("PUT", Header(put, "Access-Control-Allow-Methods") ?? "");
         var evil = await c.SendAsync(Preflight("/api/v1/staff/queue", StaffOrigin, "GET", "authorization,x-evil"));
         Assert.DoesNotContain("x-evil", (Header(evil, "Access-Control-Allow-Headers") ?? "").ToLowerInvariant());
+    }
+
+    // The API has no DELETE route. Every REST path refuses it, signed in or not (405 or 404, or 401 before any sign-in), and nothing changes.
+    [Fact]
+    public async Task S7A1_Every_REST_route_refuses_DELETE_with_and_without_a_Bearer()
+    {
+        var anon = fx.Factory.CreateClient();
+        var user = await fx.CreateStaffAsync(fx.ClinicA, Roles.Nurse, Pw);
+        var login = await fx.Factory.CreateClient().PostAsJsonAsync("/api/v1/auth/login", new { identifier = user, password = Pw });
+        var token = JsonDocument.Parse(await login.Content.ReadAsStringAsync()).RootElement.GetProperty("accessToken").GetString()!;
+        var signedIn = fx.Factory.CreateClient();
+        signedIn.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var id = "00000000-0000-0000-0000-000000000000";
+        string[] paths = ["/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout", "/api/v1/auth/activate", "/api/v1/staff/queue", $"/api/v1/staff/queue/{id}", "/api/v1/staff/audit",
+            "/api/v1/staff/qr-tokens", "/api/v1/staff/checkins", "/api/v1/staff/patients/search", $"/api/v1/staff/patients/{id}", "/api/v1/staff/activation-codes", "/api/v1/staff/nurses",
+            "/api/v1/staff/rooms", "/api/v1/checkins", "/api/v1/me", "/api/v1/appointments/next", "/api/v1/queue/me", "/health"];
+        foreach (var path in paths)
+        {
+            var noToken = await anon.DeleteAsync(path);
+            Assert.Contains(noToken.StatusCode, new[] { HttpStatusCode.Unauthorized, HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed });
+            var withToken = await signedIn.DeleteAsync(path);
+            Assert.Contains(withToken.StatusCode, new[] { HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed });
+        }
     }
 
     [Fact]

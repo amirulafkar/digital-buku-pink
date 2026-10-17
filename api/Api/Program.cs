@@ -12,6 +12,7 @@ using System.Net;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Http.Connections;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog((ctx, lc) => lc.ReadFrom.Configuration(ctx.Configuration).WriteTo.Console());
@@ -29,11 +30,16 @@ builder.Services.AddScoped<StaffService>();
 builder.Services.AddScoped<PatientService>();
 // S7 (deployment, no feature): exact-origin CORS from config. Empty list (dev, tests) means no CORS headers at all.
 var corsOrigins = Cors.OriginsFrom(builder.Configuration, allowHttp: builder.Environment.IsDevelopment());
-builder.Services.AddCors(o => o.AddPolicy("Demo", p => p
-    .WithOrigins(corsOrigins)
-    .WithMethods("GET", "POST", "PATCH")
-    .WithHeaders("Authorization", "Content-Type", "X-SignalR-User-Agent") // the SignalR JS client adds the last one on negotiate
-    .SetPreflightMaxAge(TimeSpan.FromMinutes(10))));
+// Two path-scoped policies: REST routes allow GET, POST, PATCH only; the hub (long polling) allows GET, POST and DELETE (the client ends its connection with DELETE).
+builder.Services.AddCors(o =>
+{
+    foreach (var (name, methods) in new[] { ("DemoApi", new[] { "GET", "POST", "PATCH" }), ("DemoHub", new[] { "GET", "POST", "DELETE" }) })
+        o.AddPolicy(name, p => p
+            .WithOrigins(corsOrigins)
+            .WithMethods(methods)
+            .WithHeaders("Authorization", "Content-Type", "X-SignalR-User-Agent") // the SignalR JS client adds the last one on negotiate
+            .SetPreflightMaxAge(TimeSpan.FromMinutes(10)));
+});
 // S7: behind a platform proxy (Render) the client address is the last X-Forwarded-For entry. Off unless Hosting:TrustForwardedHeaders=true, which the human sets as a Render env var (never baked into the image: with KnownProxies cleared, any direct peer could spoof X-Forwarded-For).
 var trustForwarded = builder.Configuration.GetValue<bool>("Hosting:TrustForwardedHeaders");
 builder.Services.Configure<ForwardedHeadersOptions>(o =>
@@ -62,18 +68,8 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
             RoleClaimType = "role",
             ClockSkew = TimeSpan.FromSeconds(30),
         };
-        // Browsers cannot set headers on a WebSocket, so the hub (and only the hub) may take the token from ?access_token=.
-        // Any other route ignores the query string, so a token in a URL never authenticates a REST call.
-        o.Events = new JwtBearerEvents
-        {
-            OnMessageReceived = ctx =>
-            {
-                if (ctx.HttpContext.Request.Path.StartsWithSegments(QueueGroups.Path)
-                    && ctx.Request.Query.TryGetValue("access_token", out var t) && !string.IsNullOrEmpty(t))
-                    ctx.Token = t.ToString();
-                return Task.CompletedTask;
-            },
-        };
+        // The token comes from the Authorization header only, on every route including the hub (the hub is long polling, so browsers can send the header).
+        // A token in a URL never authenticates anything.
     });
 builder.Services.AddRateLimiter(o =>
 {
@@ -128,7 +124,13 @@ if (args.Contains("seed"))
 }
 
 if (trustForwarded) app.UseForwardedHeaders(); // first, so rate limits and audit ip see the client
-if (corsOrigins.Length > 0) app.UseCors("Demo"); // before auth and the hub
+if (corsOrigins.Length > 0)
+{
+    // before auth and the hub; the hub path gets its own policy
+    static bool IsHub(HttpContext c) => c.Request.Path.StartsWithSegments(QueueGroups.Path);
+    app.UseWhen(IsHub, b => b.UseCors("DemoHub"));
+    app.UseWhen(c => !IsHub(c), b => b.UseCors("DemoApi"));
+}
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
 // Responses carry personal or session data: never let a browser, app or proxy cache them.
 app.Use(async (ctx, next) =>
@@ -142,7 +144,7 @@ app.UseAuthorization();
 app.UseRateLimiter(); // after auth so per-user policies can read the token
 app.MapGet("/health", () => Results.Ok());
 // S5: live refresh signal, server to client only. CloseOnAuthenticationExpiration ends the connection when the 15 min access token expires; the client reconnects with a fresh one.
-app.MapHub<QueueHub>(QueueGroups.Path, o => o.CloseOnAuthenticationExpiration = true).RequireAuthorization("Live");
+app.MapHub<QueueHub>(QueueGroups.Path, o => { o.CloseOnAuthenticationExpiration = true; o.Transports = HttpTransportType.LongPolling; }).RequireAuthorization("Live");
 
 var auth = app.MapGroup("/api/v1/auth").RequireRateLimiting("auth"); // HSTS: set at the host (Cloudflare Pages _headers); CORS is exact-origin config
 auth.MapPost("/login", async (LoginRequest r, AuthService s, HttpContext c) =>
