@@ -11,6 +11,7 @@ using Serilog;
 using System.Net;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog((ctx, lc) => lc.ReadFrom.Configuration(ctx.Configuration).WriteTo.Console());
@@ -26,6 +27,22 @@ builder.Services.AddScoped<QueueRepository>();
 builder.Services.AddScoped<QueueService>();
 builder.Services.AddScoped<StaffService>();
 builder.Services.AddScoped<PatientService>();
+// S7 (deployment, no feature): exact-origin CORS from config. Empty list (dev, tests) means no CORS headers at all.
+var corsOrigins = Cors.OriginsFrom(builder.Configuration, allowHttp: builder.Environment.IsDevelopment());
+builder.Services.AddCors(o => o.AddPolicy("Demo", p => p
+    .WithOrigins(corsOrigins)
+    .WithMethods("GET", "POST", "PATCH")
+    .WithHeaders("Authorization", "Content-Type", "X-SignalR-User-Agent") // the SignalR JS client adds the last one on negotiate
+    .SetPreflightMaxAge(TimeSpan.FromMinutes(10))));
+// S7: behind a platform proxy (Render) the client address is the last X-Forwarded-For entry. Off unless Hosting:TrustForwardedHeaders=true, which the human sets as a Render env var (never baked into the image: with KnownProxies cleared, any direct peer could spoof X-Forwarded-For).
+var trustForwarded = builder.Configuration.GetValue<bool>("Hosting:TrustForwardedHeaders");
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor;
+    o.ForwardLimit = 1;
+    o.KnownProxies.Clear();
+    o.KnownIPNetworks.Clear();
+});
 builder.Services.AddOpenApi();
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IQueueNotifier, QueueNotifier>();
@@ -110,6 +127,8 @@ if (args.Contains("seed"))
     return;
 }
 
+if (trustForwarded) app.UseForwardedHeaders(); // first, so rate limits and audit ip see the client
+if (corsOrigins.Length > 0) app.UseCors("Demo"); // before auth and the hub
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
 // Responses carry personal or session data: never let a browser, app or proxy cache them.
 app.Use(async (ctx, next) =>
@@ -125,7 +144,7 @@ app.MapGet("/health", () => Results.Ok());
 // S5: live refresh signal, server to client only. CloseOnAuthenticationExpiration ends the connection when the 15 min access token expires; the client reconnects with a fresh one.
 app.MapHub<QueueHub>(QueueGroups.Path, o => o.CloseOnAuthenticationExpiration = true).RequireAuthorization("Live");
 
-var auth = app.MapGroup("/api/v1/auth").RequireRateLimiting("auth"); // CORS/HSTS: confirm at the reverse proxy later
+var auth = app.MapGroup("/api/v1/auth").RequireRateLimiting("auth"); // HSTS: set at the host (Cloudflare Pages _headers); CORS is exact-origin config
 auth.MapPost("/login", async (LoginRequest r, AuthService s, HttpContext c) =>
 {
     var res = await s.LoginAsync(r.Identifier, r.Password, r.DeviceName, c.Connection.RemoteIpAddress);
@@ -189,6 +208,23 @@ api.MapGet("/queue/me", async (ClaimsPrincipal u, QueueService q) => Results.Ok(
 static Guid ClinicOf(ClaimsPrincipal u) => Guid.Parse(u.FindFirstValue("clinic_id")!);
 
 app.Run();
+
+/// <summary>Reads Cors:AllowedOrigins as a comma separated string or an array. Exact origins only: a wildcard, a path or a non-https value stops the API at start (plain http is accepted only in Development).</summary>
+public static class Cors
+{
+    public static string[] OriginsFrom(IConfiguration c, bool allowHttp = false)
+    {
+        var all = new List<string>();
+        var section = c.GetSection("Cors:AllowedOrigins");
+        if (!string.IsNullOrWhiteSpace(section.Value)) all.AddRange(section.Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        all.AddRange(section.GetChildren().Select(x => x.Value).Where(v => !string.IsNullOrWhiteSpace(v)).Select(v => v!.Trim()));
+        foreach (var o in all)
+            if (o.Contains('*') || !Uri.TryCreate(o, UriKind.Absolute, out var u) || (u.Scheme != "https" && !(allowHttp && u.Scheme == "http"))
+                || u.AbsolutePath != "/" || !string.IsNullOrEmpty(u.Query) || o.EndsWith('/'))
+                throw new InvalidOperationException($"Cors:AllowedOrigins entry '{o}' must be an exact https origin such as https://host (no wildcard, path or trailing slash; http only in Development).");
+        return all.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+}
 
 public record SearchRequest(string? Q, int? Limit);
 public record LoginRequest(string Identifier, string Password, string? DeviceName = null);

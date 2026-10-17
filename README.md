@@ -12,7 +12,7 @@ Layout: `api/` (Api, Data, Tests), `db/` (Compose, seed, backup), `web/` (Angula
 3. `db/seed/seed.sh` migrates (owner role) and seeds fictional demo data; activation codes print once. `CONFIRM_RESET=yes db/seed/reset.sh` wipes and reseeds (dev only).
 4. API for the UIs: `sh db/dev-api.sh` (http://127.0.0.1:5080, dev only, rate limits raised). Otherwise run the API with `ConnectionStrings__Default` (app role `dbp_app`) and `Auth__Key`.
 5. Staff web: `cd web && npm ci && npm start` (http://127.0.0.1:4200). Mother app: `cd mobile && npm install && npm start` (http://127.0.0.1:4300). Details in `web/README.md` and `mobile/README.md`.
-6. Demo: follow `docs/demo-script.md`.
+6. Demo: follow `docs/demo-script.md`. Free-tier online demo (Neon, Render, Cloudflare Pages): `docs/deploy-demo.md`.
 
 ### Tests
 | Suite | Command |
@@ -50,12 +50,13 @@ This prototype is best effort. If the app, the API or the network is down, the c
 - FR-10 notifications were skipped; FR-14 (reopen a missed entry) and FR-15 (staff password reset) are not built (freeze decision, `docs/work/freeze-S6.md`).
 - The FR-12 safety notice wording is a placeholder and needs MOH approval before any pilot. The Malay text needs native-speaker review.
 - Staff web has no screen for the rotating QR and no audit viewer; both are reachable only through the API (`POST /api/v1/staff/qr-tokens`, `GET /api/v1/staff/audit`).
-- Reverse proxy to do before any pilot: mask `access_token` in logs for `/hubs/queue`, add the `wss` origin to the Content-Security-Policy, forward WebSocket upgrades, enable TLS and HSTS. CORS and HSTS are not configured in the API.
+- Reverse proxy to do before any pilot: mask `access_token` in logs for `/hubs/queue`, add the `wss` origin to the Content-Security-Policy, forward WebSocket upgrades, enable TLS and HSTS. The API now allows only the origins in `Cors__AllowedOrigins` (see docs/deploy-demo.md); HSTS comes from the Pages `_headers` file and must be added at any other proxy.
 - There is no rate limit on the SignalR hub, and only one hub instance is supported (no backplane). The 429 rate-limit paths are untested because tests raise the limits.
 - The staff web keeps its refresh token in sessionStorage; the mobile app keeps tokens in memory only (a reload means log in again).
 - The staff board scrolls sideways at 200% text size. The mother app fallback refresh is every 15 s plus request time when live updates are down.
 - No real-device camera test and no load test. The `/scan` paste field is a developer aid and is compiled out of production builds.
 - Backups: a daily schedule is documented but not installed.
+- Online demo only: the SignalR hub sends `access_token` in the query string, so host request logs may contain it. Accepted for the fictional-data demo (`docs/deploy-demo.md`).
 
 ## Notes
 Auth endpoints are rate limited per IP (`Auth:RateLimitPerMinute`). Check-in, QR, activation-code issue and patient search are rate limited per user (`Auth:CheckinPerMinute`, `Auth:QrPerMinute`, `Auth:SearchPerMinute`, default 60). Patient search is `POST /api/v1/staff/patients/search` with a JSON body so typed text never appears in a URL. Serve the web app behind a reverse proxy with a strict Content-Security-Policy (the apps also ship a CSP meta tag) plus HSTS. Set `CODE_PEPPER` and `JWT_KEY` (at least 32 bytes) in `db/.env`; the API refuses to start without them. `seed` runs only with `ASPNETCORE_ENVIRONMENT=Development`. FHIR mapping note (design only): `docs/design/fhir-mapping.md`.

@@ -10,7 +10,9 @@
     "e2e": "playwright test",
     "build:prod": "ng build --configuration production",
     "verify:prod": "node scripts/verify-prod.mjs",
-    "check:prod": "npm run build:prod && npm run verify:prod"
+    "check:prod": "npm run build:prod && npm run verify:prod",
+    "build:pages": "ng build --configuration pages && node scripts/csp.mjs && node scripts/verify-prod.mjs dist/pages/browser",
+    "check:pages": "node scripts/csp.mjs --check"
   },
   "private": true,
   "packageManager": "npm@10.9.0",

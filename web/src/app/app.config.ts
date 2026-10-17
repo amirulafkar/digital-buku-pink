@@ -2,13 +2,14 @@ import { ApplicationConfig, inject, provideAppInitializer, provideBrowserGlobalE
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { routes } from './app.routes';
+import { apiBaseInterceptor } from './core/api-base';
 import { Auth, authInterceptor } from './core/auth';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes, withComponentInputBinding()),
-    provideHttpClient(withInterceptors([authInterceptor])),
+    provideHttpClient(withInterceptors([apiBaseInterceptor, authInterceptor])),
     // Restores the session from the refresh token before the first route guard runs.
     provideAppInitializer(() => inject(Auth).restore()),
   ],

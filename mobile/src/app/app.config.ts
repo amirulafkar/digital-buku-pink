@@ -4,6 +4,7 @@ import { TitleStrategy, provideRouter } from '@angular/router';
 import { LocalizedTitle } from './core/title';
 import { provideIonicAngular } from '@ionic/angular/standalone';
 import { routes } from './app.routes';
+import { apiBaseInterceptor } from './core/api-base';
 import { authInterceptor } from './core/auth';
 
 export const appConfig: ApplicationConfig = {
@@ -12,6 +13,6 @@ export const appConfig: ApplicationConfig = {
     provideIonicAngular({ mode: 'md', animated: false }),
     provideRouter(routes),
     { provide: TitleStrategy, useExisting: LocalizedTitle },
-    provideHttpClient(withInterceptors([authInterceptor])),
+    provideHttpClient(withInterceptors([apiBaseInterceptor, authInterceptor])),
   ],
 };

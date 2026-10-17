@@ -2,7 +2,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-const root = 'dist/mobile/browser';
+const root = process.argv[2] ?? 'dist/mobile/browser';
 const banned = ['dev-scan', 'data-testid="dev-token"', 'Developer only: paste a QR token', 'dev-submit'];
 const files = [];
 (function walk(d) { for (const f of readdirSync(d)) { const p = join(d, f); statSync(p).isDirectory() ? walk(p) : /\.(js|html|css)$/.test(f) && files.push(p); } })(root);

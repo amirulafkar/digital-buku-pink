@@ -4,7 +4,7 @@ Sources: 04a NFR-01, 02, 03, 05, 09, 10, 11; status.md (pre-pilot notes 2026-10-
 - Must: prove NFR-01, 02, 03, 05, 09, 10, 11 on the remote demo. No FR added or changed; no endpoint added; no estimated wait.
 ## Targets (free tiers, names proposed)
 - Staff web: Cloudflare Pages `dbp-staff` (`*.pages.dev`). Mother app: Pages `dbp-mother`.
-- API: Docker image on Render free web service `dbp-api` (sleeps after 15 min idle; no disk needed).
+- API: Docker image on Render free web service `dbp-api` (sleep-after-idle behaviour reported by the human, verify on the live Render page before relying on it; no disk needed).
 - DB: Neon free PostgreSQL 16, direct (non-pooler) endpoint, `sslmode=require`.
 ## Architecture
 - Build-time base URL: new `environment.prod.ts` (`apiBase = 'https://dbp-api.onrender.com'`) via angular.json fileReplacements. An interceptor prefixes `/api` and `/hubs`; hub URL built from apiBase. No query, storage or runtime override. Dev keeps `''` plus proxy.conf.json.
